@@ -1,0 +1,304 @@
+﻿using EdgePMO.API.Contracts;
+using EdgePMO.API.Dtos;
+using EdgePMO.API.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Net;
+
+namespace EdgePMO.API.Services
+{
+    public class UsersServices : IUserServices
+    {
+        private readonly EdgepmoDbContext _context;
+        private readonly ITokenService _tokenService;
+        private readonly IVerificationService _verificationService;
+        private readonly IEmailService _emailService;
+        public UsersServices(EdgepmoDbContext context, ITokenService tokenService, IVerificationService verificationService, IEmailService emailService)
+        {
+            _context = context;
+            _tokenService = tokenService;
+            _verificationService = verificationService;
+            _emailService = emailService;
+        }
+
+        public async Task<Response> EmailVerification(VerifyEmailDto dto)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid request.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user.EmailVerified)
+            {
+                response.IsSuccess = false;
+                response.Message = "Email already verified.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user.EmailVerificationToken != dto.Code)
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid verification code.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user.EmailVerificationExpiresAt < DateTime.UtcNow)
+            {
+                response.IsSuccess = false;
+                response.Message = "Verification code expired.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            user.EmailVerified = true;
+            user.EmailVerificationToken = null;
+            user.EmailVerificationExpiresAt = null;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Email verified successfully.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        public Task<IEnumerable<UserReadDto>> GetAllUsersAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<Response> Login(LoginDto dto)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+
+            if (user == null || (user.IsActive.HasValue && !user.IsActive.Value))
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid email or password";
+                response.Code = HttpStatusCode.Unauthorized;
+                return response;
+            }
+
+            if (!user.EmailVerified)
+            {
+                response.IsSuccess = false;
+                response.Message = "Please verify your email before logging in.";
+                response.Code = HttpStatusCode.Unauthorized;
+                return response;
+            }
+
+            bool isValid = PasswordHasher.Verify(dto.Password, user.PasswordHash, user.PasswordSalt);
+
+            if (!isValid)
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid email or password";
+                response.Code = HttpStatusCode.Unauthorized;
+                return response;
+            }
+
+            string accessToken = _tokenService.GenerateAccessToken(user);
+            RefreshToken? refreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = refreshToken.Token;
+            user.RefreshTokenCreatedAt = refreshToken.CreatedAt;
+            user.RefreshTokenExpiresAt = refreshToken.ExpiresAt;
+            user.RefreshTokenRevokedAt = null;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Login successful";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("accessToken", accessToken);
+            response.Result.Add("refreshToken", refreshToken.Token);
+            response.Result.Add("expiresAt", DateTime.UtcNow.AddMinutes(15));
+
+            return response;
+        }
+
+        public async Task<Response> Logout(Guid userId)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FindAsync(userId);
+
+            if (user != null)
+            {
+                user.RefreshTokenRevokedAt = DateTime.UtcNow;
+                user.RefreshToken = null;
+            }
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Logout successful";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        public async Task<Response> Refresh(string refreshToken)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+            if (user == null || user.RefreshTokenExpiresAt < DateTime.UtcNow || user.RefreshTokenRevokedAt != null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid refresh token";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            RefreshToken? newRefreshToken = _tokenService.GenerateRefreshToken();
+            string? accessToken = _tokenService.GenerateAccessToken(user);
+
+            user.RefreshToken = newRefreshToken.Token;
+            user.RefreshTokenCreatedAt = newRefreshToken.CreatedAt;
+            user.RefreshTokenExpiresAt = newRefreshToken.ExpiresAt;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Token refreshed successfully";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("accessToken", accessToken);
+            response.Result.Add("refreshToken", newRefreshToken.Token);
+            response.Result.Add("expiresAt", DateTime.UtcNow.AddMinutes(15));
+            return response;
+        }
+
+        public async Task<Response> Register(RegisterUserDto dto)
+        {
+            Response response = new Response();
+            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower()))
+            {
+                response.IsSuccess = false;
+                response.Message = "Email already registered";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+            byte[]? salt = PasswordHasher.GenerateSalt();
+            string? hashedPassword = PasswordHasher.Hash(dto.Password, salt);
+
+            User? user = new User
+            {
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                Email = dto.Email,
+                Role = dto.Role ?? "user",
+                PasswordSalt = salt,
+                IsAdmin = dto.IsAdmin,
+                LastCompnay = dto.LastCompany,
+                PasswordHash = hashedPassword,
+                EmailVerified = false
+            };
+
+            _context.Users.Add(user);
+            int affectedRows = await _context.SaveChangesAsync();
+
+            if (affectedRows > 0)
+            {
+                response.IsSuccess = true;
+                response.Message = "User registered successfully";
+                response.Code = HttpStatusCode.Created;
+                return response;
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "Registration failed";
+                response.Code = HttpStatusCode.InternalServerError;
+                return response;
+            }
+        }
+
+        public async Task<bool> ResetPasswordAsync(PasswordResetDto dto)
+        {
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (user == null) return false;
+
+            PasswordResetToken? tokenEntry = await _context.PasswordResetTokens
+                .Where(t => t.UserId == user.Id && !t.IsUsed && t.Expiration > DateTime.UtcNow)
+                .OrderByDescending(t => t.Expiration)
+                .FirstOrDefaultAsync();
+
+            if (tokenEntry == null || tokenEntry.Token != dto.VerificationCode)
+                return false;
+
+            byte[]? salt = PasswordHasher.GenerateSalt();
+            string? hashedPassword = PasswordHasher.Hash(dto.NewPassword, salt);
+
+            user.PasswordHash = hashedPassword;
+            user.PasswordSalt = salt;
+            tokenEntry.IsUsed = true;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<Response> SendPasswordResetTokenAsync(string email)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+            if (user == null)
+            {
+                response.IsSuccess = true;
+                response.Message = "If the email is registered, a verification code has been sent.";
+                response.Code = HttpStatusCode.OK;
+                return response;
+            }
+            string? token = _verificationService.GenerateVerificationToken();
+
+            PasswordResetToken? resetToken = new PasswordResetToken
+            {
+                UserId = user.Id,
+                Token = token,
+                Expiration = DateTime.UtcNow.AddMinutes(15)
+            };
+
+            _context.PasswordResetTokens.Add(resetToken);
+            await _context.SaveChangesAsync();
+
+            await _emailService.SendEmailVerficationAsync(user.Email, token);
+
+            response.IsSuccess = true;
+            response.Message = "If the email is registered, a verification code has been sent.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        public async Task<Response> SendVerificationMail(VerifyRequestDto request)
+        {
+            Response response = new Response();
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            string? token = _verificationService.GenerateVerificationToken();
+
+            user.EmailVerificationToken = token;
+            user.EmailVerificationExpiresAt = _verificationService.GetExpiry();
+            await _context.SaveChangesAsync();
+
+            await _emailService.SendEmailVerficationAsync(user.Email, token);
+
+            response.IsSuccess = true;
+            response.Message = "Verification code sent";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+    }
+}
