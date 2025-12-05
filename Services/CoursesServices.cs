@@ -378,5 +378,29 @@ namespace EdgePMO.API.Services
             response.Result.Add("enrolled", JsonValue.Create(enrolled));
             return response;
         }
+
+        public async Task<Response> DeleteCourseVideoAsync(Guid courseVideoId)
+        {
+            Response response = new Response();
+
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(courseVideoId);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Video not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            string? videoUrl = existing.VideoUrl;
+
+            _context.CourseVideos.Remove(existing);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course video deleted.";
+            response.Code = HttpStatusCode.NoContent;
+            return response;
+        }
     }
 }

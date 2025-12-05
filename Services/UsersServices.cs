@@ -39,6 +39,7 @@ namespace EdgePMO.API.Services
             response.Result.Add("users", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<UserReadDto>>(users)));
             return response;
         }
+
         public async Task<Response> EmailVerification(VerifyEmailDto dto)
         {
             Response response = new Response();
@@ -299,7 +300,7 @@ namespace EdgePMO.API.Services
             {
                 response.IsSuccess = false;
                 response.Message = "User not found";
-                response.Code = HttpStatusCode.NotFound;
+                response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
 

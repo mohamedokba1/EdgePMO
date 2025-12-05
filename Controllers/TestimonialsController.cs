@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("v1.0[controller]")]
+    [Route("v1.0/[controller]")]
     [ApiController]
     public class TestimonialsController : ControllerBase
     {
@@ -78,7 +78,7 @@ namespace EdgePMO.API.Controllers
             if (id != dto.TestimonialId)
                 return BadRequest("Route id and body TestimonialId must match.");
 
-            var courseExists = await _dbContext.Courses.AnyAsync(c => c.CourseId == dto.CourseId);
+            bool courseExists = await _dbContext.Courses.AnyAsync(c => c.CourseId == dto.CourseId);
             if (!courseExists)
                 return BadRequest(new { CourseId = "Course does not exist." });
 
@@ -91,7 +91,7 @@ namespace EdgePMO.API.Controllers
                 Rating = dto.Rating
             };
 
-            var updated = await _testimonialServices.UpdateAsync(testimonial);
+            bool updated = await _testimonialServices.UpdateAsync(testimonial);
             if (!updated)
                 return NotFound();
 
@@ -102,7 +102,7 @@ namespace EdgePMO.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var deleted = await _testimonialServices.DeleteAsync(id);
+            bool deleted = await _testimonialServices.DeleteAsync(id);
             if (!deleted)
                 return NotFound();
 

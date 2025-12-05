@@ -132,6 +132,12 @@ public class Program
                 policy.RequireRole("Admin", "admin"));
         });
 
+
+        using (IServiceScope? scope = app.Services.CreateScope())
+        {
+            EdgepmoDbContext? db = scope.ServiceProvider.GetRequiredService<EdgepmoDbContext>();
+            db.Database.Migrate();
+        }
         WebApplication? app = builder.Build();
 
         if (app.Environment.IsDevelopment())

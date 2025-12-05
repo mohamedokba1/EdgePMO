@@ -39,6 +39,13 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)created.Code, created);
         }
 
+        [HttpDelete("video/{id:guid}")]
+        public async Task<IActionResult> DeleteCourseVideo(Guid id)
+        {
+            Response? deleteResponse = await _courseServices.DeleteCourseVideoAsync(id);
+            return StatusCode((int)deleteResponse.Code, deleteResponse);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create(CourseCreateDto dto)
         {
