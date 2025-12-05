@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("v1.0/[controller]")]
+    [Route("api/v1.0/[controller]")]
     [ApiController]
     public class TestimonialsController : ControllerBase
     {
