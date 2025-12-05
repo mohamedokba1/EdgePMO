@@ -1,8 +1,10 @@
-﻿using EdgePMO.API.Contracts;
+﻿using AutoMapper;
+using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using System.Text.Json;
 
 namespace EdgePMO.API.Services
 {
@@ -12,14 +14,31 @@ namespace EdgePMO.API.Services
         private readonly ITokenService _tokenService;
         private readonly IVerificationService _verificationService;
         private readonly IEmailService _emailService;
-        public UsersServices(EdgepmoDbContext context, ITokenService tokenService, IVerificationService verificationService, IEmailService emailService)
+        private readonly IMapper _mapper;
+        public UsersServices(EdgepmoDbContext context, ITokenService tokenService, IVerificationService verificationService, IEmailService emailService, IMapper mapper)
         {
             _context = context;
             _tokenService = tokenService;
             _verificationService = verificationService;
             _emailService = emailService;
+            _mapper = mapper;
         }
 
+
+        public async Task<Response> GetAllUsersAsync()
+        {
+            Response response = new Response();
+            List<User>? users = await _context.Users
+                                .AsNoTracking()
+                                .OrderByDescending(u => u.CreatedAt)
+                                .ToListAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Users retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("users", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<UserReadDto>>(users)));
+            return response;
+        }
         public async Task<Response> EmailVerification(VerifyEmailDto dto)
         {
             Response response = new Response();
@@ -69,11 +88,6 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public Task<IEnumerable<UserReadDto>> GetAllUsersAsync()
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<Response> Login(LoginDto dto)
         {
             Response response = new Response();
@@ -112,15 +126,16 @@ namespace EdgePMO.API.Services
             user.RefreshTokenCreatedAt = refreshToken.CreatedAt;
             user.RefreshTokenExpiresAt = refreshToken.ExpiresAt;
             user.RefreshTokenRevokedAt = null;
+            user.UpdatedAt = DateTime.Now.ToLocalTime();
 
             await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
-            response.Message = "Login successful";
+            response.Message = "Login successfully";
             response.Code = HttpStatusCode.OK;
             response.Result.Add("accessToken", accessToken);
             response.Result.Add("refreshToken", refreshToken.Token);
-            response.Result.Add("expiresAt", DateTime.UtcNow.AddMinutes(15));
+            response.Result.Add("expiresAt", DateTime.UtcNow.AddMinutes(15).ToLocalTime());
 
             return response;
         }
@@ -132,8 +147,9 @@ namespace EdgePMO.API.Services
 
             if (user != null)
             {
-                user.RefreshTokenRevokedAt = DateTime.UtcNow;
+                user.RefreshTokenRevokedAt = DateTime.UtcNow.ToLocalTime();
                 user.RefreshToken = null;
+                user.UpdatedAt = DateTime.Now.ToLocalTime();
             }
             await _context.SaveChangesAsync();
 
@@ -267,7 +283,7 @@ namespace EdgePMO.API.Services
             _context.PasswordResetTokens.Add(resetToken);
             await _context.SaveChangesAsync();
 
-            await _emailService.SendEmailVerficationAsync(user.Email, token);
+            await _emailService.SendEmailVerficationAsync(user.Email, "Password Reset Verification", token);
 
             response.IsSuccess = true;
             response.Message = "If the email is registered, a verification code has been sent.";
@@ -275,7 +291,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> SendVerificationMail(VerifyRequestDto request)
+        public async Task<Response> SendVerificationMail(VerifyRequestDto request, string subject)
         {
             Response response = new Response();
             User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
@@ -291,9 +307,10 @@ namespace EdgePMO.API.Services
 
             user.EmailVerificationToken = token;
             user.EmailVerificationExpiresAt = _verificationService.GetExpiry();
+            user.UpdatedAt = DateTime.Now.ToLocalTime();
             await _context.SaveChangesAsync();
 
-            await _emailService.SendEmailVerficationAsync(user.Email, token);
+            await _emailService.SendEmailVerficationAsync(user.Email, subject, token);
 
             response.IsSuccess = true;
             response.Message = "Verification code sent";

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("v1/[controller]")]
+    [Route("v1.0/[controller]")]
     [ApiController]
     public class SystemController : ControllerBase
     {

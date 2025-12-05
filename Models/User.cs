@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace EdgePMO.API.Models;
+﻿namespace EdgePMO.API.Models;
 
 public partial class User
 {
@@ -42,4 +39,6 @@ public partial class User
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public List<CourseUser> CourseUsers { get; set; } = new();
 }

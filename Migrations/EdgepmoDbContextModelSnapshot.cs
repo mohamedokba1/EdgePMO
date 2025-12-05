@@ -22,6 +22,148 @@ namespace EdgePMO.API.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
+                {
+                    b.Property<Guid>("CertificateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CertificateDescription")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CertificateTitle")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("CertificateId");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("Certificates");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Course", b =>
+                {
+                    b.Property<Guid>("CourseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CoursePictureUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("InstructorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Overview")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SessionsBreakdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("WhatStudentsLearn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("CourseId");
+
+                    b.HasIndex("InstructorId");
+
+                    b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.CourseUser", b =>
+                {
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("Progress")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("CourseId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CourseUsers");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
+                {
+                    b.Property<Guid>("CourseVideoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("VideoUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("CourseVideoId");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("CourseVideos");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Instructor", b =>
+                {
+                    b.Property<Guid>("InstructorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InstructorName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Profile")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("InstructorId");
+
+                    b.ToTable("Instructors");
+                });
+
             modelBuilder.Entity("EdgePMO.API.Models.PasswordResetToken", b =>
                 {
                     b.Property<int>("Id")
@@ -49,6 +191,36 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("PasswordResetTokens");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Testimonial", b =>
+                {
+                    b.Property<Guid>("TestimonialId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StudentName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("TestimonialId");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("Testimonials");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.User", b =>
@@ -160,6 +332,58 @@ namespace EdgePMO.API.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Course", "Course")
+                        .WithMany("Certificates")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Course", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Instructor", "Instructor")
+                        .WithMany("Courses")
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instructor");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.CourseUser", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Course", "Course")
+                        .WithMany("CourseUsers")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EdgePMO.API.Models.User", "User")
+                        .WithMany("CourseUsers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Course", "Course")
+                        .WithMany("CourseVideos")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
             modelBuilder.Entity("EdgePMO.API.Models.PasswordResetToken", b =>
                 {
                     b.HasOne("EdgePMO.API.Models.User", "User")
@@ -169,6 +393,38 @@ namespace EdgePMO.API.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Testimonial", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Course", "Course")
+                        .WithMany("Testimonials")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Course", b =>
+                {
+                    b.Navigation("Certificates");
+
+                    b.Navigation("CourseUsers");
+
+                    b.Navigation("CourseVideos");
+
+                    b.Navigation("Testimonials");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.Instructor", b =>
+                {
+                    b.Navigation("Courses");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.User", b =>
+                {
+                    b.Navigation("CourseUsers");
                 });
 #pragma warning restore 612, 618
         }

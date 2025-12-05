@@ -31,6 +31,6 @@ namespace EdgePMO.API.Dtos
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string PasswordConfirmation { get; set; }
 
-        public bool IsAdmin { get; set; }
+        public bool IsAdmin { get; set; } = false;
     }
 }

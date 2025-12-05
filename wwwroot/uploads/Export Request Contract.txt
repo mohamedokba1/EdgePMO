@@ -1,0 +1,15 @@
+[DataContract]Updated
+class MyExportRequestContract
+{
+    Guid tokenId;
+
+    /// <summary>
+    /// Gets or sets the one-time security token ID.
+    /// </summary>
+    [DataMember('TokenId')]
+    public Guid parmTokenId(Guid _tokenId = tokenId)
+    {
+        tokenId = _tokenId;
+        return tokenId;
+    }
+}

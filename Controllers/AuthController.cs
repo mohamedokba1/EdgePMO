@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("v1/[controller]")]
+    [Route("v1.0/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
     {

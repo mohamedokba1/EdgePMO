@@ -31,8 +31,8 @@ namespace EdgePMO.API.Services
             List<Claim>? claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim("email", user.Email),
-                new Claim("role", user.Role)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             JwtSecurityToken? token = new JwtSecurityToken(
@@ -51,8 +51,8 @@ namespace EdgePMO.API.Services
             return new RefreshToken
             {
                 Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                CreatedAt = DateTime.UtcNow.ToLocalTime(),
+                ExpiresAt = DateTime.UtcNow.AddDays(7).ToLocalTime()
             };
         }
     }

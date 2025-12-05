@@ -3,7 +3,9 @@ using EdgePMO.API.Dtos;
 using EdgePMO.API.Middlwares;
 using EdgePMO.API.Models;
 using EdgePMO.API.Services;
+using EdgePMO.API.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -23,7 +25,7 @@ public class Program
 
         JwtSettings? jwtSettings = builder.Configuration.GetSection("JWT").Get<JwtSettings>();
 
-        #region Seruilog Configuration
+        #region Serilog Configuration
         bool enableDbLogging = builder.Configuration.GetValue<bool>("Logging:EnableDatabaseLogging");
         var columnWriters = new Dictionary<string, ColumnWriterBase>
         {
@@ -35,7 +37,7 @@ public class Program
             { "TimeStamp", new TimestampColumnWriter() }
         };
 
-        var loggerConfig = new LoggerConfiguration()
+        LoggerConfiguration? loggerConfig = new LoggerConfiguration()
             .Enrich.FromLogContext()
             .Enrich.WithThreadId()
             .Enrich.WithMachineName()
@@ -60,11 +62,23 @@ public class Program
         builder.Host.UseSerilog();
         #endregion
 
+        builder.Services.Configure<VerificationSettings>(builder.Configuration.GetSection("VerificationSettings"));
+        builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+        builder.Services.Configure<ContentSettings>(builder.Configuration.GetSection("Content"));
         builder.Services.AddTransient<GlobalExceptionMiddleware>();
         builder.Services.AddTransient<IEmailService, EmailService>();
         builder.Services.AddScoped<IUserServices, UsersServices>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IVerificationService, VerificationService>();
+        builder.Services.AddScoped<ICourseServices, CoursesServices>();
+        builder.Services.AddScoped<IInstructorServices, InstructorsServices>();
+        builder.Services.AddScoped<ITestimonialServices, TestimonialsServices>();
+        builder.Services.AddScoped<IContentServices, ContentServices>();
+        builder.Services.AddScoped<ICourseVideoServices, CourseVideoServices>();
+        builder.Services.AddAutoMapper(cfg =>
+        {
+            cfg.AddProfile<AutoMapperProfile>();
+        }, typeof(Program).Assembly);
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -73,6 +87,7 @@ public class Program
 
 
         builder.Services.AddSingleton(jwtSettings);
+        builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
 
         builder.Services.AddAuthentication(options =>
         {
@@ -84,13 +99,39 @@ public class Program
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
+                ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = jwtSettings.Issuer,
+                ValidAudience = jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
                 ClockSkew = TimeSpan.Zero
             };
+
+            // For cookies
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    string? authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                    if (!string.IsNullOrEmpty(authHeader))
+                        return Task.CompletedTask;
+
+                    string? cookie = context.Request.Cookies["accessToken"];
+                    if (!string.IsNullOrEmpty(cookie))
+                        context.Token = cookie;
+
+                    return Task.CompletedTask;
+                }
+            };
         });
+
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("Admin", policy =>
+                policy.RequireRole("Admin", "admin"));
+        });
+
         WebApplication? app = builder.Build();
 
         if (app.Environment.IsDevelopment())
@@ -102,8 +143,10 @@ public class Program
                 c.RoutePrefix = "docs";
             });
         }
+        app.UseStaticFiles();
         app.UseMiddleware<GlobalExceptionMiddleware>();
         app.UseHttpsRedirection();
+        app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
 

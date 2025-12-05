@@ -15,8 +15,18 @@ public partial class EdgepmoDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    public DbSet<Course> Courses { get; set; }
+    public DbSet<Instructor> Instructors { get; set; }
+    public DbSet<Testimonial> Testimonials { get; set; }
+    public DbSet<Certificate> Certificates { get; set; }
+    public DbSet<CourseVideo> CourseVideos { get; set; }
+    public DbSet<CourseUser> CourseUsers { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=edgepmo_db;Username=edgepmo_user;Password=EdgeWebsite@123");
+    {
+        base.OnConfiguring(optionsBuilder);
+    }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -77,6 +87,45 @@ public partial class EdgepmoDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<Course>()
+            .HasOne(c => c.Instructor)
+            .WithMany(i => i.Courses)
+            .HasForeignKey(c => c.InstructorId);
+
+        modelBuilder.Entity<Testimonial>()
+            .HasOne(t => t.Course)
+            .WithMany(c => c.Testimonials)
+            .HasForeignKey(t => t.CourseId);
+
+        modelBuilder.Entity<Certificate>()
+            .HasOne(c => c.Course)
+            .WithMany(c => c.Certificates)
+            .HasForeignKey(c => c.CourseId);
+
+        modelBuilder.Entity<CourseVideo>(entity =>
+        {
+            entity.HasKey(e => e.CourseVideoId);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasOne(e => e.Course)
+                  .WithMany(c => c.CourseVideos)
+                  .HasForeignKey(e => e.CourseId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CourseUser>(entity =>
+        {
+            entity.HasKey(e => new { e.CourseId, e.UserId });
+            entity.HasOne(e => e.Course)
+                  .WithMany(c => c.CourseUsers)
+                  .HasForeignKey(e => e.CourseId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                  .WithMany(u => u.CourseUsers)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

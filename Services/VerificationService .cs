@@ -1,5 +1,5 @@
 ﻿using EdgePMO.API.Contracts;
-using EdgePMO.API.Dtos;
+using EdgePMO.API.Settings;
 using Microsoft.Extensions.Options;
 
 namespace EdgePMO.API.Services
@@ -21,7 +21,7 @@ namespace EdgePMO.API.Services
 
         public DateTime GetExpiry()
         {
-            return DateTime.UtcNow.AddMinutes(_settings.TokenExpiryMinutes);
+            return DateTime.UtcNow.AddMinutes(_settings.TokenExpiryMinutes).ToLocalTime();
         }
     }
 }

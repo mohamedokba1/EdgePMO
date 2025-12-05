@@ -1,65 +1,81 @@
 ﻿using EdgePMO.API.Contracts;
-using System.Net;
-using System.Net.Mail;
+using EdgePMO.API.Settings;
+using MailKit.Net.Smtp;
+using Microsoft.Extensions.Options;
+using MimeKit;
 
 namespace EdgePMO.API.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _config;
-        public EmailService(IConfiguration config)
+        private readonly EmailSettings _emailSettings;
+        public EmailService(IOptions<EmailSettings> config)
         {
-            _config = config;
+            _emailSettings = config.Value;
         }
         public int GenerateVerificationCode()
         {
             return 1;
         }
 
-        public async Task<bool> SendEmailVerficationAsync(string to, string VerificationCode)
+        public async Task<bool> SendEmailVerficationAsync(string to, string subject, string verificationCode)
         {
-            using SmtpClient? client = new SmtpClient(_config["SmtpSettings:host"], 587)
-            {
-                Credentials = new NetworkCredential(_config["SmtpSettings:UserName"], _config["SmtpSettings:Password"]),
-                EnableSsl = true
-            };
+            MimeMessage message = new MimeMessage();
+            message.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+            message.To.Add(new MailboxAddress("", to));
+            message.Subject = subject;
 
-            MailMessage? mail = new MailMessage()
-            {
-                From = new MailAddress(_config["SmtpSettings:UserName"] ?? "operation@edgepmo.com", _config["SmtpSettings:FromEmail"]),
-                Subject = "Your Verification Code",
-                Body = GetHtmlTemplate(VerificationCode),
-                IsBodyHtml = true
-            };
-            mail.To.Add(new MailAddress(to));
+            BodyBuilder? bodyBuilder = new BodyBuilder();
 
-            await client.SendMailAsync(mail);
+            bodyBuilder.HtmlBody = GetHtmlTemplate(verificationCode);
+            bodyBuilder.TextBody = $"Your verification code is: {verificationCode}";
+
+            message.Body = bodyBuilder.ToMessageBody();
+
+            using SmtpClient client = new SmtpClient();
+
+            await client.ConnectAsync(_emailSettings.Host, _emailSettings.Port, MailKit.Security.SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_emailSettings.UserName, _emailSettings.Password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+
             return true;
         }
 
         private string GetHtmlTemplate(string token)
         {
             return $@"
-                <table style='max-width:550px;width:100%;margin:auto;font-family:Arial, sans-serif;background:#ffffff;padding:20px;border-radius:10px;color:#333'>
-                <tr>
-                <td style='text-align:center'>
-                <h2 style='color:#4a76ff'>Your Verification Code</h2>
-                <p style='font-size:16px'>Use the following code to verify your email:</p>
-
-                <div style='font-size:32px;letter-spacing:5px;font-weight:bold;margin:20px 0;color:#4a76ff'>
-                {token}
-                </div>
-
-                <p style='font-size:14px;color:#777'>
-                This code will expire in 10 minutes.
-                </p>
-
-                <hr />
-
-                <p style='font-size:12px;color:#999'>If you didn’t request this, please ignore this email.</p>
-                </td>
-                </tr>
-                </table>";
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset='utf-8'>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }}
+                        .container {{ max-width: 550px; width: 100%; margin: auto; background: #ffffff; padding: 30px; border-radius: 10px; color: #333; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                        .header {{ text-align: center; color: #4a76ff; margin-bottom: 20px; }}
+                        .token {{ font-size: 32px; letter-spacing: 5px; font-weight: bold; margin: 25px 0; color: #4a76ff; text-align: center; padding: 15px; background: #f8f9ff; border-radius: 5px; }}
+                        .footer {{ margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <div class='header'>
+                            <h2>Your Verification Code</h2>
+                            <p style='font-size: 16px; color: #666;'>Use the following code to verify your email address:</p>
+                        </div>
+            
+                        <div class='token'>{token}</div>
+            
+                        <p style='text-align: center; font-size: 14px; color: #777;'>
+                            This code will expire in 10 minutes for security reasons.
+                        </p>
+            
+                        <div class='footer'>
+                            <p>If you didn't request this verification, please ignore this email.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>";
         }
     }
 }
