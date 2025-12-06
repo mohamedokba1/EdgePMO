@@ -3,6 +3,7 @@ using System;
 using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    partial class EdgepmoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251206194405_AddPurchasesRequests")]
+    partial class AddPurchasesRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,9 +73,6 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("Overview")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<double>("Price")
-                        .HasColumnType("double precision");
 
                     b.Property<string>("SessionsBreakdown")
                         .IsRequired()

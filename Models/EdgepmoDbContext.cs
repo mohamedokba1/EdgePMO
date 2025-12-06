@@ -24,6 +24,7 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<Template> Templates { get; set; }
     public DbSet<Purchase> Purchases { get; set; }
     public DbSet<UserTemplate> UserTemplates { get; set; }
+    public DbSet<PurchaseRequest> PurchaseRequests { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

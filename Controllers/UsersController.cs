@@ -3,6 +3,7 @@ using EdgePMO.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Security.Claims;
 
 namespace EdgePMO.API.Controllers
 {
@@ -104,6 +105,28 @@ namespace EdgePMO.API.Controllers
         {
             Response response = await _userServices.SendVerificationMail(request, "Email Verification");
             return StatusCode((int)response.Code, response);
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            string? currentIdClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid? currentUserId = Guid.TryParse(currentIdClaim, out Guid tmpId) ? tmpId : null;
+            string? currentEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+
+            if (!currentUserId.HasValue && string.IsNullOrWhiteSpace(currentEmail))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, new Response
+                {
+                    IsSuccess = false,
+                    Message = "Unauthorized: User ID or Email claim is missing.",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
+
+            Response resp = await _userServices.GetProfileAsync(currentUserId, currentEmail);
+            return StatusCode((int)resp.Code, resp);
         }
     }
 }

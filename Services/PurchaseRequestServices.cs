@@ -80,7 +80,7 @@ namespace EdgePMO.API.Services
                 RequestedAmount = dto.RequestedAmount,
                 Currency = dto.Currency,
                 Notes = dto.Notes,
-                Status = PurchaseRequestStatus.Pending.ToString().ToLowerInvariant(),
+                Status = "Pending",
                 RequestedAt = DateTime.UtcNow,
                 IdempotencyKey = string.IsNullOrWhiteSpace(dto.IdempotencyKey) ? null : dto.IdempotencyKey
             };
@@ -178,13 +178,13 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            if (!string.Equals(pr.Status, PurchaseRequestStatus.Pending.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-            {
-                response.IsSuccess = false;
-                response.Message = "Purchase request already processed.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
+            //if (!string.Equals(pr.Status, PurchaseRequestStatus.Pending.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+            //{
+            //    response.IsSuccess = false;
+            //    response.Message = "Purchase request already processed.";
+            //    response.Code = HttpStatusCode.BadRequest;
+            //    return response;
+            //}
 
             // Use transaction to ensure atomicity
             await using var tx = await _context.Database.BeginTransactionAsync();
@@ -240,7 +240,7 @@ namespace EdgePMO.API.Services
                     }
                 }
 
-                pr.Status = PurchaseRequestStatus.Accepted.ToString().ToLowerInvariant();
+                //pr.Status = PurchaseRequestStatus.Accepted.ToString().ToLowerInvariant();
                 pr.AdminId = adminId;
                 pr.DecisionAt = DateTime.UtcNow;
 
@@ -291,15 +291,15 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            if (!string.Equals(pr.Status, PurchaseRequestStatus.Pending.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
-            {
-                response.IsSuccess = false;
-                response.Message = "Purchase request already processed.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
+            //if (!string.Equals(pr.Status, PurchaseRequestStatus.Pending.ToString().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+            //{
+            //    response.IsSuccess = false;
+            //    response.Message = "Purchase request already processed.";
+            //    response.Code = HttpStatusCode.BadRequest;
+            //    return response;
+            //}
 
-            pr.Status = PurchaseRequestStatus.Rejected.ToString().ToLowerInvariant();
+            //pr.Status = PurchaseRequestStatus.Rejected.ToString().ToLowerInvariant();
             pr.AdminId = adminId;
             pr.DecisionAt = DateTime.UtcNow;
             pr.Notes = (pr.Notes ?? string.Empty) + $" | Rejection reason: {reason}";

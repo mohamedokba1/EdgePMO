@@ -5,11 +5,11 @@
         public Guid CourseId { get; set; } = Guid.NewGuid();
         public string Name { get; set; }
         public string Description { get; set; }
+        public double Price { get; set; }
         public string CoursePictureUrl { get; set; }
         public string Overview { get; set; }
         public string WhatStudentsLearn { get; set; }
         public string SessionsBreakdown { get; set; }
-
         public Guid InstructorId { get; set; }
         public Instructor Instructor { get; set; }
 

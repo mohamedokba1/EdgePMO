@@ -26,7 +26,7 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
 
-            var courses = await _context.Courses
+            List<Course>? courses = await _context.Courses
                 .AsNoTracking()
                 .Include(c => c.Instructor)
                 .Include(c => c.Testimonials)
@@ -95,7 +95,8 @@ namespace EdgePMO.API.Services
                 Overview = dto.Overview,
                 WhatStudentsLearn = dto.WhatStudentsLearn,
                 SessionsBreakdown = dto.SessionsBreakdown,
-                InstructorId = dto.InstructorId
+                InstructorId = dto.InstructorId,
+                Price = dto.Price
             };
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
@@ -289,7 +290,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> EnrollUserAsync(Guid courseId, Guid userId)
+        public async Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails)
         {
             Response response = new Response();
 
@@ -298,84 +299,205 @@ namespace EdgePMO.API.Services
             {
                 response.IsSuccess = false;
                 response.Message = "Course not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            User? user = await _context.Users.FindAsync(userId);
-            if (user == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "User not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            bool already = await _context.CourseUsers.AnyAsync(cu => cu.CourseId == courseId && cu.UserId == userId);
-            if (already)
-            {
-                response.IsSuccess = false;
-                response.Message = "User is already enrolled in this course.";
-                response.Code = HttpStatusCode.Conflict;
-                return response;
-            }
-
-            CourseUser? enrollment = new CourseUser
-            {
-                CourseId = courseId,
-                UserId = userId,
-                EnrolledAt = DateTime.UtcNow,
-                Progress = 0.0
-            };
-
-            _context.CourseUsers.Add(enrollment);
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "User enrolled successfully.";
-            response.Code = HttpStatusCode.Created;
-            response.Result.Add("enrollment", JsonSerializer.SerializeToNode(new
-            {
-                courseId = enrollment.CourseId,
-                userId = enrollment.UserId,
-                enrolledAt = enrollment.EnrolledAt,
-                progress = enrollment.Progress
-            }) ?? JsonValue.Create(new { }));
-            return response;
-        }
-
-        public async Task<Response> UnenrollUserAsync(Guid courseId, Guid userId)
-        {
-            Response response = new Response();
-
-            CourseUser? existing = await _context.CourseUsers.FirstOrDefaultAsync(cu => cu.CourseId == courseId && cu.UserId == userId);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Enrollment not found.";
                 response.Code = HttpStatusCode.NotFound;
                 return response;
             }
 
-            _context.CourseUsers.Remove(existing);
+            List<string>? normalizedEmails = emails
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            if (normalizedEmails.Count == 0)
+            {
+                response.IsSuccess = false;
+                response.Message = "No valid emails provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            List<User>? users = await _context.Users
+                                              .Where(u => normalizedEmails.Contains(u.Email.ToLower()))
+                                              .ToListAsync();
+
+            HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
+
+            List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
+
+            List<object>? enrolled = new List<object>();
+            List<string>? alreadyEnrolled = new List<string>();
+
+            foreach (User? user in users)
+            {
+                bool exists = await _context.CourseUsers.AnyAsync(cu => cu.CourseId == courseId && cu.UserId == user.Id);
+                if (exists)
+                {
+                    alreadyEnrolled.Add(user.Email);
+                    continue;
+                }
+
+                CourseUser? cu = new CourseUser
+                {
+                    CourseId = courseId,
+                    UserId = user.Id,
+                    EnrolledAt = DateTime.UtcNow,
+                    Progress = 0.0
+                };
+
+                _context.CourseUsers.Add(cu);
+                enrolled.Add(new { userId = user.Id, email = user.Email });
+            }
+
             await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
-            response.Message = "User unenrolled successfully.";
+            response.Message = "Enrollment processed.";
             response.Code = HttpStatusCode.OK;
+            response.Result.Add("enrolled", JsonSerializer.SerializeToNode(enrolled) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("alreadyEnrolled", JsonSerializer.SerializeToNode(alreadyEnrolled) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
             return response;
         }
 
-        public async Task<Response> IsUserEnrolledAsync(Guid courseId, Guid userId)
+        public async Task<Response> UnenrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails)
         {
             Response response = new Response();
 
-            bool enrolled = await _context.CourseUsers.AnyAsync(cu => cu.CourseId == courseId && cu.UserId == userId);
+            Course? course = await _context.Courses.FindAsync(courseId);
+            if (course == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            List<string>? normalizedEmails = emails
+                                            .Where(e => !string.IsNullOrWhiteSpace(e))
+                                            .Select(e => e.Trim().ToLowerInvariant())
+                                            .Distinct()
+                                            .ToList();
+
+            if (normalizedEmails.Count == 0)
+            {
+                response.IsSuccess = false;
+                response.Message = "No valid emails provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            List<User>? users = await _context.Users
+                .Where(u => normalizedEmails.Contains(u.Email.ToLower()))
+                .ToListAsync();
+
+            HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
+
+            List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
+
+            List<object>? unenrolled = new List<object>();
+            List<string>? notEnrolled = new List<string>();
+
+            List<Guid>? userIds = users.Select(u => u.Id).ToList();
+            List<CourseUser>? enrollments = await _context.CourseUsers
+                .Where(cu => cu.CourseId == courseId && userIds.Contains(cu.UserId))
+                .ToListAsync();
+
+            HashSet<Guid>? enrolledUserIds = enrollments.Select(e => e.UserId).ToHashSet();
+
+            foreach (User user in users)
+            {
+                if (enrolledUserIds.Contains(user.Id))
+                {
+                    CourseUser? ent = enrollments.First(e => e.UserId == user.Id && e.CourseId == courseId);
+                    _context.CourseUsers.Remove(ent);
+                    unenrolled.Add(new { userId = user.Id, email = user.Email });
+                }
+                else
+                {
+                    notEnrolled.Add(user.Email);
+                }
+            }
+
+            await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
-            response.Message = enrolled ? "User is enrolled." : "User is not enrolled.";
+            response.Message = "Unenrollment processed.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("enrolled", JsonValue.Create(enrolled));
+            response.Result.Add("unenrolled", JsonSerializer.SerializeToNode(unenrolled) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("notEnrolled", JsonSerializer.SerializeToNode(notEnrolled) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> IsUsersEnrolledAsync(Guid courseId, IEnumerable<string> emails)
+        {
+            Response response = new Response();
+
+            if (emails == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Emails list is required.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            List<string>? normalizedEmails = emails
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            if (normalizedEmails.Count == 0)
+            {
+                response.IsSuccess = false;
+                response.Message = "No valid emails provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            bool courseExists = await _context.Courses.AnyAsync(c => c.CourseId == courseId);
+            if (!courseExists)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            var users = await _context.Users
+                .AsNoTracking()
+                .Where(u => normalizedEmails.Contains(u.Email.ToLower()))
+                .Select(u => new { u.Id, u.Email })
+                .ToListAsync();
+
+            HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
+            List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
+            Dictionary<Guid, string>? userIdMap = users.ToDictionary(u => u.Id, u => u.Email.Trim());
+            List<Guid>? userIds = users.Select(u => u.Id).ToList();
+
+            List<Guid>? enrollments = await _context.CourseUsers
+                .AsNoTracking()
+                .Where(cu => cu.CourseId == courseId && userIds.Contains(cu.UserId))
+                .Select(cu => cu.UserId)
+                .ToListAsync();
+
+            HashSet<Guid>? enrolledUserIds = new HashSet<Guid>(enrollments);
+
+
+            var results = users.Select(u => new
+            {
+                email = u.Email,
+                enrolled = enrolledUserIds.Contains(u.Id),
+                userId = u.Id
+            })
+            .ToList();
+
+            response.IsSuccess = true;
+            response.Message = "Enrollment check completed.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("results", JsonSerializer.SerializeToNode(results) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
             return response;
         }
 

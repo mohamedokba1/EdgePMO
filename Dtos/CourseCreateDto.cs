@@ -23,6 +23,10 @@ namespace EdgePMO.API.Dtos
         [StringLength(4000)]
         public string? SessionsBreakdown { get; set; }
 
+        [Range(0, double.MaxValue)]
+        [Required]
+        public double Price { get; set; }
+
         [Required]
         public Guid InstructorId { get; set; }
     }

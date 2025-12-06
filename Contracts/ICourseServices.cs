@@ -12,8 +12,8 @@ namespace EdgePMO.API.Contracts
         Task<Response> AttachCourseVideoAsync(CourseVideoCreateDto dto);
         Task<Response> DeleteCourseVideoAsync(Guid courseVideoId);
         Task<Response> GetEnrolledUsersAsync(Guid courseId);
-        Task<Response> EnrollUserAsync(Guid courseId, Guid userId);
-        Task<Response> UnenrollUserAsync(Guid courseId, Guid userId);
-        Task<Response> IsUserEnrolledAsync(Guid courseId, Guid userId);
+        Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> email);
+        Task<Response> UnenrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails);
+        Task<Response> IsUsersEnrolledAsync(Guid courseId, IEnumerable<string> emails);
     }
 }

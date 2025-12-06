@@ -85,24 +85,24 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
-        [HttpPost("{id:guid}/students/{userId:guid}")]
-        public async Task<IActionResult> EnrollUser(Guid id, Guid userId)
+        [HttpPost("{id:guid}/students")]
+        public async Task<IActionResult> EnrollUser(Guid id, [FromBody] EnrollmentListDto dto)
         {
-            Response? resp = await _courseServices.EnrollUserAsync(id, userId);
+            Response? resp = await _courseServices.EnrollUsersByEmailsAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
         }
 
-        [HttpDelete("{id:guid}/students/{userId:guid}")]
-        public async Task<IActionResult> UnenrollUser(Guid id, Guid userId)
+        [HttpDelete("{id:guid}/students")]
+        public async Task<IActionResult> UnenrollUser(Guid id, [FromBody] EnrollmentListDto dto)
         {
-            Response? resp = await _courseServices.UnenrollUserAsync(id, userId);
+            Response? resp = await _courseServices.UnenrollUsersByEmailsAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
         }
 
-        [HttpGet("{id:guid}/students/{userId:guid}")]
-        public async Task<IActionResult> IsEnrolled(Guid id, Guid userId)
+        [HttpGet("{id:guid}/students/status")]
+        public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] EnrollmentListDto dto)
         {
-            Response? resp = await _courseServices.IsUserEnrolledAsync(id, userId);
+            Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
         }
     }

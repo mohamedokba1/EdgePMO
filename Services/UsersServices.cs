@@ -5,6 +5,7 @@ using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace EdgePMO.API.Services
 {
@@ -316,6 +317,69 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Verification code sent";
             response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        public async Task<Response> GetProfileAsync(Guid? userId, string? email)
+        {
+            Response response = new Response();
+
+            IQueryable<User> query = _context.Users
+                .AsNoTracking()
+                .Include(u => u.CourseUsers)
+                    .ThenInclude(cu => cu.Course)
+                        .ThenInclude(c => c.Instructor)
+                .Include(u => u.UserTemplates)
+                    .ThenInclude(ut => ut.Template);
+
+            User? user = null;
+
+            if (userId != Guid.Empty)
+            {
+                user = await query.FirstOrDefaultAsync(u => u.Id == userId);
+            }
+            else if (!string.IsNullOrWhiteSpace(email))
+            {
+                string emailLower = email.Trim().ToLowerInvariant();
+                user = await query.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "Either id or email must be provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            UserReadDto? userDto = _mapper.Map<UserReadDto>(user);
+
+            List<Course>? courses = user.CourseUsers?
+                .Where(cu => cu.Course != null)
+                .Select(cu => cu.Course)
+                .Distinct()
+                .ToList() ?? new List<Course>();
+
+            IEnumerable<CourseReadDto>? courseDtos = _mapper.Map<IEnumerable<CourseReadDto>>(courses);
+
+            List<UserTemplateReadDto>? templates = _mapper
+                                                .Map<IEnumerable<UserTemplateReadDto>>(user.UserTemplates ?? Enumerable.Empty<UserTemplate>())
+                                                .ToList();
+
+            response.IsSuccess = true;
+            response.Message = "User profile retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("user", JsonSerializer.SerializeToNode(userDto) ?? JsonValue.Create(new { }));
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(courseDtos) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("templates", JsonSerializer.SerializeToNode(templates) ?? JsonValue.Create(Array.Empty<object>()));
+
             return response;
         }
     }

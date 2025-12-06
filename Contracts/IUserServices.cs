@@ -13,5 +13,6 @@ namespace EdgePMO.API.Contracts
         Task<Response> SendVerificationMail(VerifyRequestDto dto, string subject);
         Task<Response> SendPasswordResetTokenAsync(string email);
         Task<bool> ResetPasswordAsync(PasswordResetDto dto);
+        Task<Response> GetProfileAsync(Guid? userId, string? email);
     }
 }
