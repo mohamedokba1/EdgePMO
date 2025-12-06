@@ -21,6 +21,9 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<Certificate> Certificates { get; set; }
     public DbSet<CourseVideo> CourseVideos { get; set; }
     public DbSet<CourseUser> CourseUsers { get; set; }
+    public DbSet<Template> Templates { get; set; }
+    public DbSet<Purchase> Purchases { get; set; }
+    public DbSet<UserTemplate> UserTemplates { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -128,6 +131,129 @@ public partial class EdgepmoDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // ===== PURCHASE CONFIGURATION =====
+        modelBuilder.Entity<Purchase>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.PurchaseType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("pending");
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(3)
+                .HasDefaultValue("USD");
+
+            entity.Property(e => e.Amount)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.PaymentMethod)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.TransactionId)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.PurchasedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Foreign Keys
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.Purchases)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Template)
+                .WithMany(t => t.Purchases)
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Course)
+                .WithMany(c => c.Purchases)
+                .HasForeignKey(e => e.CourseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Indexes
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.PurchaseType);
+        });
+
+        // ===== TEMPLATE CONFIGURATION =====
+        modelBuilder.Entity<Template>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(e => e.Category)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Price)
+                .HasPrecision(10, 2);
+
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // ===== USER TEMPLATE CONFIGURATION =====
+        modelBuilder.Entity<UserTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.PurchasedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.Property(e => e.IsFavorite)
+                .HasDefaultValue(false);
+
+            // Unique constraint - user can only own template once
+            entity.HasIndex(e => new { e.UserId, e.TemplateId })
+                .IsUnique();
+
+            // Foreign Keys
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.UserTemplates)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Template)
+                .WithMany(t => t.UserTemplates)
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Purchase)
+                .WithMany()
+                .HasForeignKey(e => e.PurchaseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Indexes
+            entity.HasIndex(e => e.UserId);
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

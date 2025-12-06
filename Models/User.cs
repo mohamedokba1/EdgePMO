@@ -40,5 +40,7 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    public List<Purchase> Purchases { get; set; } = new List<Purchase>();
+    public List<UserTemplate> UserTemplates { get; set; } = new List<UserTemplate>();
     public List<CourseUser> CourseUsers { get; set; } = new();
 }

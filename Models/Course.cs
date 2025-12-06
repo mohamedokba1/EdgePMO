@@ -17,5 +17,6 @@
         public List<Certificate> Certificates { get; set; } = new();
         public List<CourseVideo> CourseVideos { get; set; } = new();
         public List<CourseUser> CourseUsers { get; set; } = new();
+        public ICollection<Purchase> Purchases { get; set; } = new List<Purchase>();
     }
 }
