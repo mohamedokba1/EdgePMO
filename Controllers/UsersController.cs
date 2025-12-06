@@ -83,7 +83,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost("register")]
-        [Authorize("Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDto dto)
         {
             Response response = await _userServices.Register(dto);

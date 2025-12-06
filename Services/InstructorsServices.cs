@@ -42,7 +42,7 @@ namespace EdgePMO.API.Services
             {
                 response.IsSuccess = false;
                 response.Message = "Instructor not found.";
-                response.Code = HttpStatusCode.NotFound;
+                response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
             response.IsSuccess = true;

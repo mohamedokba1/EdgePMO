@@ -132,7 +132,23 @@ public class Program
                 policy.RequireRole("Admin", "admin"));
         });
 
-
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("EdgePmo", policy =>
+            {
+                policy.WithOrigins(
+                    "https://edgepmo.com",
+                    "https://www.edgepmo.com",
+                    "http://localhost:4200",
+                    "https://localhost:4200",
+                    "http://localhost:3000"
+                )
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+                .WithExposedHeaders("Content-Disposition"); // If you need to expose headers
+            });
+        });
         WebApplication? app = builder.Build();
 
         using (IServiceScope? scope = app.Services.CreateScope())
@@ -149,6 +165,7 @@ public class Program
                 c.RoutePrefix = "docs";
             });
         }
+        app.UseCors("EdgePmo");
         app.UseStaticFiles();
         app.UseMiddleware<GlobalExceptionMiddleware>();
         app.UseHttpsRedirection();

@@ -53,23 +53,20 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            string? webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string? uploads = Path.Combine(webRoot, uploadsRelative);
-            Directory.CreateDirectory(uploads);
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
+            Directory.CreateDirectory(webRoot);
 
-            string? filePath = Path.Combine(uploads, file.FileName);
+            string? filePath = Path.Combine(webRoot, file.FileName);
 
             await using (FileStream? stream = File.Create(filePath))
             {
                 await file.CopyToAsync(stream);
             }
 
-            string? relativeUrl = $"{uploadsRelative}/{file.FileName}";
-
             response.IsSuccess = true;
             response.Message = "File uploaded successfully.";
             response.Code = HttpStatusCode.Created;
-            response.Result.Add("relativePath", JsonValue.Create(uploads));
+            response.Result.Add("relativePath", JsonValue.Create(webRoot));
             response.Result.Add("fileName", JsonValue.Create(file.FileName));
             response.Result.Add("size", JsonValue.Create(file.Length));
             return response;
@@ -80,10 +77,9 @@ namespace EdgePMO.API.Services
             Response response = new Response();
 
             string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string? webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string? uploads = Path.Combine(webRoot, uploadsRelative);
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
 
-            if (!Directory.Exists(uploads))
+            if (!Directory.Exists(webRoot))
             {
                 response.IsSuccess = true;
                 response.Message = "No assets found.";
@@ -92,8 +88,8 @@ namespace EdgePMO.API.Services
                 return Task.FromResult(response);
             }
 
-            string[]? files = Directory.EnumerateFiles(uploads, "*", SearchOption.TopDirectoryOnly)
-                                       .Select(f => $"{uploadsRelative}/{Path.GetFileName(f)}")
+            string[]? files = Directory.EnumerateFiles(webRoot, "*", SearchOption.TopDirectoryOnly)
+                                       .Select(f => $"{Path.GetFileName(f)}")
                                        .ToArray();
 
             response.IsSuccess = true;
@@ -118,8 +114,8 @@ namespace EdgePMO.API.Services
             fileName = Path.GetFileName(fileName);
 
             string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string? webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string? filePath = Path.Combine(webRoot, uploadsRelative, fileName);
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
+            string? filePath = Path.Combine(webRoot, fileName);
 
             if (!File.Exists(filePath))
             {

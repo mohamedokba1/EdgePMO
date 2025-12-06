@@ -2,8 +2,6 @@
 using EdgePMO.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace EdgePMO.API.Controllers
 {
@@ -25,17 +23,6 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> ListAssets()
         {
             Response response = await _contentServices.ListAssetsAsync();
-            if (response.IsSuccess && response.Result.TryGetPropertyValue("files", out JsonNode? filesNode) && filesNode is JsonArray filesArray)
-            {
-                string[]? fullUrls = filesArray
-                    .Select(n => (n as JsonValue)?.GetValue<string>() ?? string.Empty)
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .Select(s => $"{Request.Scheme}://{Request.Host}/{s.TrimStart('/')}")
-                    .ToArray();
-
-                response.Result["files"] = JsonSerializer.SerializeToNode(fullUrls) ?? JsonValue.Create(Array.Empty<object>());
-            }
-
             return StatusCode((int)response.Code, response);
         }
 
@@ -46,10 +33,20 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
-        [HttpDelete("assets/{fileName}")]
+        [HttpDelete("assets")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> DeleteAsset(string fileName)
+        public async Task<IActionResult> DeleteAsset([FromQuery] string fileName)
         {
+            if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains(".."))
+            {
+                return StatusCode(400, new Response
+                {
+                    IsSuccess = false,
+                    Message = "Invalid filename",
+                    Code = System.Net.HttpStatusCode.BadRequest
+                });
+            }
+
             Response response = await _contentServices.DeleteAssetAsync(fileName);
             return StatusCode((int)response.Code, response);
         }
