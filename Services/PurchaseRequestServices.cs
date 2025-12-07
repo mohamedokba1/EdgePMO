@@ -335,7 +335,7 @@ namespace EdgePMO.API.Services
         }
 
 
-        public async Task SendApprovalEmailAsync(User user, PurchaseRequest pr)
+        private async Task SendApprovalEmailAsync(User user, PurchaseRequest pr)
         {
             string htmlBody = $@"
                             <!DOCTYPE html>
@@ -395,7 +395,7 @@ namespace EdgePMO.API.Services
             await _emailService.SendEmailAsync(user.Email, "Your Purchase Request Has Been Approved", htmlBody, true);
         }
 
-        public async Task SendRejectionEmailAsync(User user, PurchaseRequest pr, string rejectionReasons)
+        private async Task SendRejectionEmailAsync(User user, PurchaseRequest pr, string rejectionReasons)
         {
             string htmlBody = $@"
                     <!DOCTYPE html>
