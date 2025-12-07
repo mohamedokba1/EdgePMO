@@ -25,26 +25,49 @@ namespace EdgePMO.API.Services
         public async Task<Response> GetAllAsync()
         {
             Response response = new Response();
+
             List<Template>? list = await _context.Templates
                 .AsNoTracking()
-                .Include(t => t.Purchases)
                 .Include(t => t.UserTemplates)
                 .ToListAsync();
+
+            List<TemplateReadDto>? dtoList = list.Select(t => new TemplateReadDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                Price = t.Price,
+                Category = t.Category,
+                CoverImageUrl = t.CoverImageUrl,
+                IsActive = t.IsActive,
+                FilePath = t.FilePath,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                UsersPurchased = (t.UserTemplates)
+                    .Select(ut => new TemplateUsersReadDto
+                    {
+                        UserId = ut.UserId,
+                        PurchasedAt = ut.PurchasedAt,
+                        DownloadedAt = ut.DownloadedAt,
+                        IsFavorite = ut.IsFavorite
+                    })
+                    .ToList()
+            }).ToList();
 
             response.IsSuccess = true;
             response.Message = "Templates retrieved.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("templates", JsonSerializer.SerializeToNode(list) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("templates", JsonSerializer.SerializeToNode(dtoList) ?? JsonValue.Create(Array.Empty<object>()));
             return response;
         }
 
         public async Task<Response> GetByIdAsync(Guid id)
         {
             Response response = new Response();
+
             Template? template = await _context.Templates
                 .AsNoTracking()
-                .Include(x => x.Purchases)
-                .Include(x => x.UserTemplates)
+                .Include(t => t.UserTemplates)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (template == null)
@@ -55,10 +78,33 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            TemplateReadDto? dto = new TemplateReadDto
+            {
+                Id = template.Id,
+                Name = template.Name,
+                Description = template.Description,
+                Price = template.Price,
+                Category = template.Category,
+                CoverImageUrl = template.CoverImageUrl,
+                IsActive = template.IsActive,
+                FilePath = template.FilePath,
+                CreatedAt = template.CreatedAt,
+                UpdatedAt = template.UpdatedAt,
+                UsersPurchased = (template.UserTemplates)
+                    .Select(ut => new TemplateUsersReadDto
+                    {
+                        UserId = ut.UserId,
+                        PurchasedAt = ut.PurchasedAt,
+                        DownloadedAt = ut.DownloadedAt,
+                        IsFavorite = ut.IsFavorite
+                    })
+                    .ToList()
+            };
+
             response.IsSuccess = true;
             response.Message = "Template retrieved.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("template", JsonSerializer.SerializeToNode(template) ?? JsonValue.Create(new { }));
+            response.Result.Add("template", JsonSerializer.SerializeToNode(dto) ?? JsonValue.Create(new { }));
             return response;
         }
 
@@ -66,13 +112,13 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
 
-            if (!await _contentServices.FileExistsAsync(dto.FilePath) || !await _contentServices.FileExistsAsync(dto.CoverImageUrl))
-            {
-                response.IsSuccess = false;
-                response.Message = "File(s) does not exist.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
+            //if (!await _contentServices.FileExistsAsync(dto.FilePath) || !await _contentServices.FileExistsAsync(dto.CoverImageUrl))
+            //{
+            //    response.IsSuccess = false;
+            //    response.Message = "File(s) does not exist.";
+            //    response.Code = HttpStatusCode.BadRequest;
+            //    return response;
+            //}
 
             Template? template = new Template
             {

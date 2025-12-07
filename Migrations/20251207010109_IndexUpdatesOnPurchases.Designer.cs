@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    [Migration("20251206223321_AddFilePathInTemplates")]
-    partial class AddFilePathInTemplates
+    [Migration("20251207010109_IndexUpdatesOnPurchases")]
+    partial class IndexUpdatesOnPurchases
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -340,6 +340,11 @@ namespace EdgePMO.API.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("CoverImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -352,11 +357,6 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("FilePath")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<string>("CoverImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -561,7 +561,7 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("UserId", "TemplateId")
                         .IsUnique();
 
-                    b.ToTable("UsersPurchased");
+                    b.ToTable("UserTemplates");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
@@ -694,13 +694,13 @@ namespace EdgePMO.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("EdgePMO.API.Models.Template", "Template")
-                        .WithMany("UsersPurchased")
+                        .WithMany("UserTemplates")
                         .HasForeignKey("TemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EdgePMO.API.Models.User", "User")
-                        .WithMany("UsersPurchased")
+                        .WithMany("UserTemplates")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -734,7 +734,7 @@ namespace EdgePMO.API.Migrations
                 {
                     b.Navigation("Purchases");
 
-                    b.Navigation("UsersPurchased");
+                    b.Navigation("UserTemplates");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.User", b =>
@@ -743,7 +743,7 @@ namespace EdgePMO.API.Migrations
 
                     b.Navigation("Purchases");
 
-                    b.Navigation("UsersPurchased");
+                    b.Navigation("UserTemplates");
                 });
 #pragma warning restore 612, 618
         }

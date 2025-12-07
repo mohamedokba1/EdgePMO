@@ -561,7 +561,7 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("UserId", "TemplateId")
                         .IsUnique();
 
-                    b.ToTable("UserTemplates");
+                    b.ToTable("UsersPurchased");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
@@ -694,13 +694,13 @@ namespace EdgePMO.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("EdgePMO.API.Models.Template", "Template")
-                        .WithMany("UserTemplates")
+                        .WithMany("UsersPurchased")
                         .HasForeignKey("TemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EdgePMO.API.Models.User", "User")
-                        .WithMany("UserTemplates")
+                        .WithMany("UsersPurchased")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -734,7 +734,7 @@ namespace EdgePMO.API.Migrations
                 {
                     b.Navigation("Purchases");
 
-                    b.Navigation("UserTemplates");
+                    b.Navigation("UsersPurchased");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.User", b =>
@@ -743,7 +743,7 @@ namespace EdgePMO.API.Migrations
 
                     b.Navigation("Purchases");
 
-                    b.Navigation("UserTemplates");
+                    b.Navigation("UsersPurchased");
                 });
 #pragma warning restore 612, 618
         }

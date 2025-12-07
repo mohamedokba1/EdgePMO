@@ -48,7 +48,7 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.RenameTable(
                 name: "UserTemplate",
-                newName: "UserTemplates");
+                newName: "UsersPurchased");
 
             migrationBuilder.RenameTable(
                 name: "Template",
@@ -60,22 +60,22 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.RenameIndex(
                 name: "IX_UserTemplate_UserId_TemplateId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 newName: "IX_UserTemplates_UserId_TemplateId");
 
             migrationBuilder.RenameIndex(
                 name: "IX_UserTemplate_UserId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 newName: "IX_UserTemplates_UserId");
 
             migrationBuilder.RenameIndex(
                 name: "IX_UserTemplate_TemplateId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 newName: "IX_UserTemplates_TemplateId");
 
             migrationBuilder.RenameIndex(
                 name: "IX_UserTemplate_PurchaseId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 newName: "IX_UserTemplates_PurchaseId");
 
             migrationBuilder.RenameIndex(
@@ -105,7 +105,7 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_UserTemplates",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 column: "Id");
 
             migrationBuilder.AddPrimaryKey(
@@ -197,7 +197,7 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.AddForeignKey(
                 name: "FK_UserTemplates_Purchases_PurchaseId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 column: "PurchaseId",
                 principalTable: "Purchases",
                 principalColumn: "Id",
@@ -205,7 +205,7 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.AddForeignKey(
                 name: "FK_UserTemplates_Templates_TemplateId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 column: "TemplateId",
                 principalTable: "Templates",
                 principalColumn: "Id",
@@ -213,7 +213,7 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.AddForeignKey(
                 name: "FK_UserTemplates_users_UserId",
-                table: "UserTemplates",
+                table: "UsersPurchased",
                 column: "UserId",
                 principalTable: "users",
                 principalColumn: "id",
@@ -245,22 +245,22 @@ namespace EdgePMO.API.Migrations
 
             migrationBuilder.DropForeignKey(
                 name: "FK_UserTemplates_Purchases_PurchaseId",
-                table: "UserTemplates");
+                table: "UsersPurchased");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_UserTemplates_Templates_TemplateId",
-                table: "UserTemplates");
+                table: "UsersPurchased");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_UserTemplates_users_UserId",
-                table: "UserTemplates");
+                table: "UsersPurchased");
 
             migrationBuilder.DropTable(
                 name: "PurchaseRequests");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_UserTemplates",
-                table: "UserTemplates");
+                table: "UsersPurchased");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_Templates",
@@ -271,7 +271,7 @@ namespace EdgePMO.API.Migrations
                 table: "Purchases");
 
             migrationBuilder.RenameTable(
-                name: "UserTemplates",
+                name: "UsersPurchased",
                 newName: "UserTemplate");
 
             migrationBuilder.RenameTable(
