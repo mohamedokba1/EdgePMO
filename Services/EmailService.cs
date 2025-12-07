@@ -42,6 +42,35 @@ namespace EdgePMO.API.Services
             return true;
         }
 
+        public async Task<bool> SendEmailAsync(string to, string subject, string body, bool isHtml = true)
+        {
+            MimeMessage message = new MimeMessage();
+            message.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+            message.To.Add(new MailboxAddress("", to));
+            message.Subject = subject;
+
+            BodyBuilder bodyBuilder = new BodyBuilder();
+
+            if (isHtml)
+            {
+                bodyBuilder.HtmlBody = body;
+            }
+            else
+            {
+                bodyBuilder.TextBody = body;
+            }
+
+            message.Body = bodyBuilder.ToMessageBody();
+
+            using SmtpClient client = new SmtpClient();
+            await client.ConnectAsync(_emailSettings.Host, _emailSettings.Port, MailKit.Security.SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_emailSettings.UserName, _emailSettings.Password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+
+            return true;
+        }
+
         private string GetHtmlTemplate(string token)
         {
             return $@"

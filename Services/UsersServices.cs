@@ -192,7 +192,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> Register(RegisterUserDto dto)
+        public async Task<Response> Register(RegisterUserDto dto, bool isAdmin = false)
         {
             Response response = new Response();
             if (await _context.Users.AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower()))
@@ -210,9 +210,11 @@ namespace EdgePMO.API.Services
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Email = dto.Email,
-                Role = dto.Role ?? "user",
+                Role = isAdmin ? "admin" : "user",
+                PhoneNo_1 = dto.Phone1,
+                PhoneNo_2 = dto.Phone2,
                 PasswordSalt = salt,
-                IsAdmin = dto.IsAdmin,
+                IsAdmin = isAdmin,
                 LastCompnay = dto.LastCompany,
                 PasswordHash = hashedPassword,
                 EmailVerified = false

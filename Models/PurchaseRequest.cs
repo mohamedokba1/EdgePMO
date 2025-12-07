@@ -6,8 +6,6 @@
         public Guid UserId { get; set; }
         public Guid? TemplateId { get; set; }
         public Guid? CourseId { get; set; }
-        public decimal? RequestedAmount { get; set; }
-        public string Currency { get; set; } = "EGP";
         public string Notes { get; set; }
         public string Status { get; set; } = "Pending";
         public Guid? AdminId { get; set; }

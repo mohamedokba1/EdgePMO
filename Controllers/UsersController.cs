@@ -39,10 +39,11 @@ namespace EdgePMO.API.Controllers
             }
             CookieOptions? cookieOptions = new CookieOptions
             {
-                HttpOnly = true,     // Prevents JavaScript access
-                Secure = true,       // Only sent over HTTPS
-                SameSite = SameSiteMode.Strict, // Prevents CSRF
-                Expires = DateTime.Now.AddMinutes(15).ToLocalTime() // Short expiry
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+                Expires = DateTime.Now.AddMinutes(60).ToLocalTime()
             };
 
             Response.Cookies.Append("accessToken", token, cookieOptions);
@@ -80,12 +81,29 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> Logout(Guid id)
         {
             Response response = await _userServices.Logout(id);
+
+            Response.Cookies.Delete("accessToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/"
+            });
+
             return StatusCode((int)response.Code, response);
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDto dto)
+        {
+            Response response = await _userServices.Register(dto);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("register-admin")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> RegisterAdmin([FromBody] RegisterUserDto dto)
         {
             Response response = await _userServices.Register(dto);
             return StatusCode((int)response.Code, response);

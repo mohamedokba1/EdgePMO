@@ -12,8 +12,13 @@ namespace EdgePMO.API.Dtos
         [StringLength(50, MinimumLength = 2, ErrorMessage = "Last name must be between 2 and 50 characters.")]
         public string LastName { get; set; }
 
-        [StringLength(50, ErrorMessage = "Role cannot exceed 50 characters.")]
-        public string Role { get; set; }
+        [StringLength(15, ErrorMessage = "Phone cannot exceed 15 characters.")]
+        [RegularExpression(@"^\+?[0-9]+$", ErrorMessage = "Phone number can only contain numeric digits and an optional '+' at the start.")]
+        public string Phone1 { get; set; }
+
+        [StringLength(15, ErrorMessage = "Phone cannot exceed 15 characters.")]
+        [RegularExpression(@"^\+?[0-9]+$", ErrorMessage = "Phone number can only contain numeric digits and an optional '+' at the start.")]
+        public string Phone2 { get; set; }
 
         [StringLength(255, ErrorMessage = "Last company cannot exceed 255 characters.")]
         public string LastCompany { get; set; }
@@ -24,13 +29,14 @@ namespace EdgePMO.API.Dtos
         public string Email { get; set; }
 
         [Required(ErrorMessage = "Password is required.")]
-        [StringLength(50, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be between 8 and 100 characters.")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$",
+            ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).")]
         public string Password { get; set; }
 
         [Required(ErrorMessage = "Password confirmation is required.")]
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string PasswordConfirmation { get; set; }
 
-        public bool IsAdmin { get; set; } = false;
     }
 }

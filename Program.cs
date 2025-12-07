@@ -6,11 +6,17 @@ using EdgePMO.API.Services;
 using EdgePMO.API.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Sinks.PostgreSQL;
+using System.Net;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EdgePMP.API;
 
@@ -76,12 +82,51 @@ public class Program
         builder.Services.AddScoped<IContentServices, ContentServices>();
         builder.Services.AddScoped<ICourseVideoServices, CourseVideoServices>();
         builder.Services.AddScoped<ITemplateServices, TemplatesServices>();
+        builder.Services.AddScoped<IPurchaseRequestServices, PurchaseRequestServices>();
+        builder.Services.AddScoped<IPurchaseServices, PurchaseServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {
             cfg.AddProfile<AutoMapperProfile>();
         }, typeof(Program).Assembly);
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = context =>
+                {
+                    JsonArray errorList = new JsonArray();
+
+                    foreach (var kvp in context.ModelState)
+                    {
+                        string[] errorMessages = kvp.Value.Errors
+                            .Select(e => e.ErrorMessage)
+                            .ToArray();
+
+                        if (errorMessages.Length > 0)
+                        {
+                            foreach (string errorMessage in errorMessages)
+                            {
+                                errorList.Add(new
+                                {
+                                    key = kvp.Key,
+                                    message = errorMessage
+                                });
+                            }
+                        }
+                    }
+ 
+                    Response? response = new Response()
+                    {
+                        IsSuccess = false,
+                        Message = "One or more validation errors occurred.",
+                        Code = HttpStatusCode.BadRequest
+                    };
+
+                    response.Result.Add("errors", errorList);
+                    return new BadRequestObjectResult(response);
+                };
+            });
+
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddHealthChecks()
@@ -116,12 +161,17 @@ public class Program
                 OnMessageReceived = context =>
                 {
                     string? authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-                    if (!string.IsNullOrEmpty(authHeader))
+
+                    if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                    {
                         return Task.CompletedTask;
+                    }
 
                     string? cookie = context.Request.Cookies["accessToken"];
                     if (!string.IsNullOrEmpty(cookie))
+                    {
                         context.Token = cookie;
+                    }
 
                     return Task.CompletedTask;
                 }
@@ -132,6 +182,9 @@ public class Program
         {
             options.AddPolicy("Admin", policy =>
                 policy.RequireRole("Admin", "admin"));
+
+            options.AddPolicy("Public", policy =>
+                policy.RequireRole("user", "User"));
         });
 
         builder.Services.AddCors(options =>

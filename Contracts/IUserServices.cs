@@ -8,7 +8,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> Refresh(string refreshToken);
         Task<Response> Login(LoginDto dto);
         Task<Response> Logout(Guid userId);
-        Task<Response> Register(RegisterUserDto dto);
+        Task<Response> Register(RegisterUserDto dto, bool isAdmin = false);
         Task<Response> EmailVerification(VerifyEmailDto dto);
         Task<Response> SendVerificationMail(VerifyRequestDto dto, string subject);
         Task<Response> SendPasswordResetTokenAsync(string email);

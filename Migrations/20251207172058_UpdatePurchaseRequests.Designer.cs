@@ -3,6 +3,7 @@ using System;
 using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    partial class EdgepmoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251207172058_UpdatePurchaseRequests")]
+    partial class UpdatePurchaseRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -473,14 +476,6 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("bytea")
                         .HasColumnName("password_salt");
-
-                    b.Property<string>("PhoneNo_1")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhoneNo_2")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("text")

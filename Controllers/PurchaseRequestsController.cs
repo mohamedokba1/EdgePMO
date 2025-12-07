@@ -3,10 +3,11 @@ using EdgePMO.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Net;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("api/v1.0/[controller]")]
+    [Route("api/v1.0/purchase-requests")]
     [ApiController]
     public class PurchaseRequestsController : ControllerBase
     {
@@ -21,43 +22,47 @@ namespace EdgePMO.API.Controllers
         [Authorize]
         public async Task<IActionResult> Create([FromBody] PurchaseRequestCreateDto dto)
         {
-            // resolve requestor id from claims
             string? userClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userClaim, out Guid userId))
-                return Unauthorized(new { message = "User id not found in token" });
-
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, new Response
+                {
+                    IsSuccess = false,
+                    Message = "User id not found in token",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
             Response resp = await _requestServices.CreateRequestAsync(dto, userId);
             return StatusCode((int)resp.Code, resp);
         }
 
-        // GET api/v1.0/purchase-requests/me  - current user's requests
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetMine()
         {
             string? userClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userClaim, out Guid userId))
-                return Unauthorized(new { message = "User id not found in token" });
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, new Response
+                {
+                    IsSuccess = false,
+                    Message = "User id not found in token",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
 
             Response resp = await _requestServices.GetForUserAsync(userId);
             return StatusCode((int)resp.Code, resp);
         }
 
-        // GET api/v1.0/purchase-requests/{id}
         [HttpGet("{id:guid}")]
-        [Authorize]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Get(Guid id)
         {
-            // allow owner or admin — pass requester id to service for ownership check
-            string? userClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            Guid? requesterId = null;
-            if (Guid.TryParse(userClaim, out Guid userId)) requesterId = userId;
-
-            Response resp = await _requestServices.GetByIdAsync(id, requesterId);
+            Response resp = await _requestServices.GetByIdAsync(id);
             return StatusCode((int)resp.Code, resp);
         }
 
-        // GET api/v1.0/purchase-requests  (admin)
         [HttpGet]
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GetAll()
@@ -66,33 +71,41 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
-        // PATCH api/v1.0/purchase-requests/{id}/approve  (admin)
         [HttpPatch("{id:guid}/approve")]
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Approve(Guid id)
         {
-            // admin id from token
             string? adminClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(adminClaim, out Guid adminId))
-                return Unauthorized(new { message = "Admin id not found in token" });
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, new Response
+                {
+                    IsSuccess = false,
+                    Message = "User id not found in token",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
 
             Response resp = await _requestServices.ApproveAsync(id, adminId);
             return StatusCode((int)resp.Code, resp);
         }
 
-        // PATCH api/v1.0/purchase-requests/{id}/reject  (admin)
         [HttpPatch("{id:guid}/reject")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> Reject(Guid id, [FromBody] PurchaseRequestAdminActionDto body)
+        public async Task<IActionResult> Reject(Guid id, [FromBody] PurchaseRequestRejectionActionDto body)
         {
-            if (string.IsNullOrWhiteSpace(body.Status) || !body.Status.Equals("rejected", StringComparison.OrdinalIgnoreCase))
-                return BadRequest(new { message = "Status must be 'rejected' for this endpoint." });
-
             string? adminClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(adminClaim, out Guid adminId))
-                return Unauthorized(new { message = "Admin id not found in token" });
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, new Response
+                {
+                    IsSuccess = false,
+                    Message = "User id not found in token",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
 
-            Response resp = await _requestServices.RejectAsync(id, adminId, body.Notes ?? string.Empty);
+            Response resp = await _requestServices.RejectAsync(id, adminId, body.RejectionReasons ?? new List<string>());
             return StatusCode((int)resp.Code, resp);
         }
     }
