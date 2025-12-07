@@ -26,13 +26,18 @@ namespace EdgePMO.API.Settings
             CreateMap<UserTemplate, UserTemplateReadDto>()
                     .ForMember(d => d.TemplateId, opt => opt.MapFrom(s => s.Template.Id))
                     .ForMember(d => d.Name, opt => opt.MapFrom(s => s.Template.Name))
-                    .ForMember(d => d.ImageUrl, opt => opt.MapFrom(s => s.Template.ImageUrl))
+                    .ForMember(d => d.ImageUrl, opt => opt.MapFrom(s => s.Template.CoverImageUrl))
                     .ForMember(d => d.Price, opt => opt.MapFrom(s => s.Template.Price))
                     .ForMember(d => d.Category, opt => opt.MapFrom(s => s.Template.Category))
                     .ForMember(d => d.IsActive, opt => opt.MapFrom(s => s.Template.IsActive))
                     .ForMember(d => d.PurchasedAt, opt => opt.MapFrom(s => s.PurchasedAt))
                     .ForMember(d => d.DownloadedAt, opt => opt.MapFrom(s => s.DownloadedAt))
                     .ForMember(d => d.IsFavorite, opt => opt.MapFrom(s => s.IsFavorite));
+
+            CreateMap<TemplateUpdateDto, Template>()
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) =>
+                    srcMember != null && (!(srcMember is string s) || !string.IsNullOrWhiteSpace(s))
+                ));
         }
     }
 }

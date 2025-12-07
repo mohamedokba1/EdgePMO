@@ -75,6 +75,8 @@ public class Program
         builder.Services.AddScoped<ITestimonialServices, TestimonialsServices>();
         builder.Services.AddScoped<IContentServices, ContentServices>();
         builder.Services.AddScoped<ICourseVideoServices, CourseVideoServices>();
+        builder.Services.AddScoped<ITemplateServices, TemplatesServices>();
+
         builder.Services.AddAutoMapper(cfg =>
         {
             cfg.AddProfile<AutoMapperProfile>();

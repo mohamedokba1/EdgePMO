@@ -7,5 +7,6 @@ namespace EdgePMO.API.Contracts
         Task<Response> UploadMediaAsync(IFormFile file);
         Task<Response> ListAssetsAsync();
         Task<Response> DeleteAssetAsync(string fileName);
+        Task<bool> FileExistsAsync(string filePath);
     }
 }

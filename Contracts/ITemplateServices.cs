@@ -9,5 +9,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> CreateAsync(TemplateCreateDto dto);
         Task<Response> UpdateAsync(TemplateUpdateDto dto);
         Task<Response> DeleteAsync(Guid id);
+        Task<Response> GrantAccessByEmailsAsync(Guid templateId, IEnumerable<string> emails);
+        Task<Response> RevokeAccessByEmailsAsync(Guid templateId, IEnumerable<string> emails);
     }
 }

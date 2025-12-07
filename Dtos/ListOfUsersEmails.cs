@@ -2,7 +2,7 @@
 
 namespace EdgePMO.API.Dtos
 {
-    public class EnrollmentListDto
+    public class ListOfUsersEmails
     {
         [Required]
         public List<string> Emails { get; init; }

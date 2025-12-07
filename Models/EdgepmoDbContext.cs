@@ -202,7 +202,7 @@ public partial class EdgepmoDbContext : DbContext
             entity.Property(e => e.Category)
                 .HasMaxLength(100);
 
-            entity.Property(e => e.ImageUrl)
+            entity.Property(e => e.CoverImageUrl)
                 .HasMaxLength(500);
 
             entity.Property(e => e.Price)

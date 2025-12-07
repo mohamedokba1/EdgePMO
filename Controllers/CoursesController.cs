@@ -86,21 +86,21 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost("{id:guid}/students")]
-        public async Task<IActionResult> EnrollUser(Guid id, [FromBody] EnrollmentListDto dto)
+        public async Task<IActionResult> EnrollUser(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.EnrollUsersByEmailsAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
         }
 
         [HttpDelete("{id:guid}/students")]
-        public async Task<IActionResult> UnenrollUser(Guid id, [FromBody] EnrollmentListDto dto)
+        public async Task<IActionResult> UnenrollUser(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.UnenrollUsersByEmailsAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
         }
 
         [HttpGet("{id:guid}/students/status")]
-        public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] EnrollmentListDto dto)
+        public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);

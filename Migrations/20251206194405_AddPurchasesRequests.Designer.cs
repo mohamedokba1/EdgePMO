@@ -346,7 +346,7 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ImageUrl")
+                    b.Property<string>("CoverImageUrl")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");

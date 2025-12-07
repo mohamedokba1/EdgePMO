@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    [Migration("20251206204206_AddCoursePrice")]
-    partial class AddCoursePrice
+    [Migration("20251206223321_AddFilePathInTemplates")]
+    partial class AddFilePathInTemplates
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -346,6 +346,10 @@ namespace EdgePMO.API.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FilePath")
                         .IsRequired()
                         .HasColumnType("text");
 

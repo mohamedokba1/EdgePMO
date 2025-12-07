@@ -132,5 +132,18 @@ namespace EdgePMO.API.Services
             response.Code = HttpStatusCode.NoContent;
             return Task.FromResult(response);
         }
+
+        public Task<bool> FileExistsAsync(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrEmpty(filePath))
+                return Task.FromResult(false);
+
+            //string uploadsRelative = string.IsNullOrWhiteSpace(relativePath) ? (_settings.UploadsRelative ?? "uploads") : relativePath;
+            //string? webRoot = Path.Combine(relativePath ?? "/var/www/", uploadsRelative);
+            //string safeFileName = Path.GetFileName(fileName);
+            //string filePath = Path.Combine(webRoot, safeFileName);
+
+            return Task.FromResult(File.Exists(filePath));
+        }
     }
 }

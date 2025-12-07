@@ -18,7 +18,10 @@ namespace EdgePMO.API.Dtos
         public string? Category { get; init; }
 
         [StringLength(1000)]
-        public string? ImageUrl { get; init; }
+        public string? CoverImageUrl { get; init; }
+
+        [StringLength(1000)]
+        public string? FilePath { get; init; }
 
         public bool IsActive { get; init; } = true;
     }

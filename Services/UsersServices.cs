@@ -329,14 +329,17 @@ namespace EdgePMO.API.Services
                 .Include(u => u.CourseUsers)
                     .ThenInclude(cu => cu.Course)
                         .ThenInclude(c => c.Instructor)
+                .Include(u => u.CourseUsers)
+                    .ThenInclude(cu => cu.Course)
+                        .ThenInclude(c => c.CourseVideos)
                 .Include(u => u.UserTemplates)
                     .ThenInclude(ut => ut.Template);
 
             User? user = null;
 
-            if (userId != Guid.Empty)
+            if (userId.HasValue && userId.Value != Guid.Empty)
             {
-                user = await query.FirstOrDefaultAsync(u => u.Id == userId);
+                user = await query.FirstOrDefaultAsync(u => u.Id == userId.Value);
             }
             else if (!string.IsNullOrWhiteSpace(email))
             {
@@ -362,7 +365,7 @@ namespace EdgePMO.API.Services
             UserReadDto? userDto = _mapper.Map<UserReadDto>(user);
 
             List<Course>? courses = user.CourseUsers?
-                .Where(cu => cu.Course != null)
+                .Where(cu => cu.Course != null && cu.Course.CourseVideos != null && cu.Course.CourseVideos.Any())
                 .Select(cu => cu.Course)
                 .Distinct()
                 .ToList() ?? new List<Course>();
