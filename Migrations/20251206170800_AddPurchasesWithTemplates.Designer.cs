@@ -74,7 +74,7 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("SessionsBreakdown")
+                    b.Property<string>("MainObjective")
                         .IsRequired()
                         .HasColumnType("text");
 

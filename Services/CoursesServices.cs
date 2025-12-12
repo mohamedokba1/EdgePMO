@@ -92,9 +92,9 @@ namespace EdgePMO.API.Services
                 Name = dto.Name,
                 Description = dto.Description,
                 CoursePictureUrl = dto.CoursePictureUrl,
-                Overview = dto.Overview,
+                LongDescription = dto.Overview,
                 WhatStudentsLearn = dto.WhatStudentsLearn,
-                SessionsBreakdown = dto.SessionsBreakdown,
+                //CourseOutline = dto.Outlines,
                 InstructorId = dto.InstructorId,
                 Price = dto.Price
             };

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace EdgePMO.API.Models;
 
@@ -25,6 +26,8 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<Purchase> Purchases { get; set; }
     public DbSet<UserTemplate> UserTemplates { get; set; }
     public DbSet<PurchaseRequest> PurchaseRequests { get; set; }
+    public DbSet<CourseOutline> CourseOutlines { get; set; }
+    public DbSet<CourseReview> CourseReviews { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -97,7 +100,7 @@ public partial class EdgepmoDbContext : DbContext
             .HasOne(c => c.Instructor)
             .WithMany(i => i.Courses)
             .HasForeignKey(c => c.InstructorId);
-
+        
         modelBuilder.Entity<Testimonial>()
             .HasOne(t => t.Course)
             .WithMany(c => c.Testimonials)
@@ -130,6 +133,119 @@ public partial class EdgepmoDbContext : DbContext
                   .WithMany(u => u.CourseUsers)
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===========================================================
+
+        modelBuilder.Entity<Course>(entity =>
+        {
+            entity.HasKey(e => e.CourseId);
+            entity.Property(e => e.CourseId).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Subtitle).HasMaxLength(500);
+            entity.Property(e => e.Description).IsRequired();
+            entity.Property(e => e.LongDescription).HasColumnType("text");
+
+            entity.Property(e => e.Price).HasPrecision(10, 2);
+            entity.Property(e => e.Rating).HasPrecision(3, 1);
+
+            // Store lists as jsonb
+            JsonSerializerOptions? jsonSerializerOptions = new JsonSerializerOptions();
+
+            entity.Property(e => e.SoftwareUsed)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<List<string>>(v, jsonSerializerOptions) ?? new List<string>())
+                .HasColumnType("jsonb");
+
+            entity.Property(e => e.WhatStudentsLearn)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<List<string>>(v, jsonSerializerOptions) ?? new List<string>())
+                .HasColumnType("jsonb");
+
+            entity.Property(e => e.WhoShouldAttend)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<List<string>>(v, jsonSerializerOptions) ?? new List<string>())
+                .HasColumnType("jsonb");
+
+            entity.Property(e => e.Requirements)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<List<string>>(v, jsonSerializerOptions) ?? new List<string>())
+                .HasColumnType("jsonb");
+
+            entity.HasOne(e => e.Instructor)
+                .WithMany(i => i.Courses)
+                .HasForeignKey(e => e.InstructorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.CourseOutline)
+                .WithOne(co => co.Course)
+                .HasForeignKey(co => co.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.CourseReview)
+                .WithOne(cr => cr.Course)
+                .HasForeignKey(cr => cr.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.InstructorId);
+        });
+
+        // CourseOutline configuration
+        modelBuilder.Entity<CourseOutline>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
+
+            var outlineJsonOptions = new JsonSerializerOptions();
+            entity.Property(e => e.Items)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, outlineJsonOptions),
+                    v => JsonSerializer.Deserialize<List<string>>(v, outlineJsonOptions) ?? new List<string>())
+                .HasColumnType("jsonb");
+
+            entity.Property(e => e.Order).HasDefaultValue(0);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(e => e.Course)
+                .WithMany(c => c.CourseOutline)
+                .HasForeignKey(e => e.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.CourseId);
+            entity.HasIndex(e => new { e.CourseId, e.Order });
+        });
+        //=========================================================
+
+        // CourseReview configuration
+        modelBuilder.Entity<CourseReview>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.Rating).HasPrecision(3, 2).HasDefaultValue(0.0);
+            entity.Property(e => e.Text).IsRequired().HasMaxLength(4000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(e => e.Course)
+                .WithMany(c => c.CourseReview)
+                .HasForeignKey(e => e.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.CourseId);
+            entity.HasIndex(e => e.UserId);
         });
 
         // ===== PURCHASE CONFIGURATION =====

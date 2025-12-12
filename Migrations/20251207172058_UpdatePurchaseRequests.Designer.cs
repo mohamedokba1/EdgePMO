@@ -77,7 +77,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<double>("Price")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("SessionsBreakdown")
+                    b.Property<string>("MainObjective")
                         .IsRequired()
                         .HasColumnType("text");
 
