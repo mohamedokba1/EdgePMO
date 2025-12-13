@@ -93,7 +93,7 @@ namespace EdgePMO.API.Services
         public async Task<Response> Login(LoginDto dto)
         {
             Response response = new Response();
-            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower() == dto.Email.ToLower());
 
             if (user == null || (user.IsActive.HasValue && !user.IsActive.Value))
             {
@@ -209,7 +209,7 @@ namespace EdgePMO.API.Services
             {
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
-                Email = dto.Email,
+                Email = dto.Email.ToLower(),
                 Role = isAdmin ? "admin" : "user",
                 PhoneNo_1 = dto.Phone1,
                 PhoneNo_2 = dto.Phone2,

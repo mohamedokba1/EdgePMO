@@ -8,7 +8,6 @@ namespace EdgePMO.API.Controllers
 {
     [Route("api/v1.0/[controller]")]
     [ApiController]
-    [Authorize(Policy = "Admin")]
     public class CoursesController : ControllerBase
     {
         private readonly ICourseServices _courseServices;
@@ -19,6 +18,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             Response? courses = await _courseServices.GetAllAsync();
@@ -26,6 +26,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize]
         public async Task<IActionResult> Get(Guid id)
         {
             Response? courseResponse = await _courseServices.GetByIdAsync(id);
@@ -33,6 +34,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost("video")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> CreateCourseVideo(CourseVideoCreateDto dto)
         {
             Response? created = await _courseServices.AttachCourseVideoAsync(dto);
@@ -40,6 +42,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpDelete("video/{id:guid}")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> DeleteCourseVideo(Guid id)
         {
             Response? deleteResponse = await _courseServices.DeleteCourseVideoAsync(id);
@@ -47,6 +50,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Create(CourseCreateDto dto)
         {
             Response? created = await _courseServices.CreateAsync(dto);
@@ -54,6 +58,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Update(Guid id, CourseUpdateDto courseUpdateDto)
         {
 
@@ -72,6 +77,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             Response? deleteResponse = await _courseServices.DeleteAsync(id);
@@ -79,6 +85,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("{id:guid}/students")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GetEnrolledUsers(Guid id)
         {
             Response? resp = await _courseServices.GetEnrolledUsersAsync(id);
@@ -86,6 +93,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost("{id:guid}/students")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> EnrollUser(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.EnrollUsersByEmailsAsync(id, dto.Emails);
@@ -93,6 +101,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpDelete("{id:guid}/students")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> UnenrollUser(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.UnenrollUsersByEmailsAsync(id, dto.Emails);
@@ -100,6 +109,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("{id:guid}/students/status")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);

@@ -11,12 +11,12 @@ namespace EdgePMO.API.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.RenameColumn(
-                name: "Url",
+                name: "VideoUrl",
                 table: "CourseVideos",
                 newName: "Url");
 
             migrationBuilder.RenameColumn(
-                name: "Id",
+                name: "CourseVideoId",
                 table: "CourseVideos",
                 newName: "Id");
         }
@@ -27,12 +27,12 @@ namespace EdgePMO.API.Migrations
             migrationBuilder.RenameColumn(
                 name: "Url",
                 table: "CourseVideos",
-                newName: "Url");
+                newName: "VideoUrl");
 
             migrationBuilder.RenameColumn(
                 name: "Id",
                 table: "CourseVideos",
-                newName: "Id");
+                newName: "CourseVideoId");
         }
     }
 }

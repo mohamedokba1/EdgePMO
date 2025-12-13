@@ -10,10 +10,10 @@ namespace EdgePMO.API.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Overview",
-                table: "Courses",
-                newName: "Overview");
+            //migrationBuilder.RenameColumn(
+            //    name: "LongDescription",
+            //    table: "Courses",
+            //    newName: "Overview");
 
             migrationBuilder.AddColumn<string>(
                 name: "MainObjective",
@@ -25,10 +25,11 @@ namespace EdgePMO.API.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Overview",
-                table: "Courses",
-                newName: "Overview");
+            //migrationBuilder.RenameColumn(
+            //    name: "Overview",
+            //    table: "Courses",
+            //    newName: "LongDescription");
+
             migrationBuilder.DropColumn(
                 name: "MainObjective",
                 table: "Courses");
