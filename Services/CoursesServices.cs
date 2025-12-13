@@ -36,6 +36,9 @@ namespace EdgePMO.API.Services
                 .Include(c => c.Testimonials)
                 .Include(c => c.Certificates)
                 .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Videos)
+                 .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Documents)
                 .Include(c => c.CourseUsers)
                     .ThenInclude(cu => cu.User)
                 .ToListAsync();
