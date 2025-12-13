@@ -80,10 +80,11 @@ public class Program
         builder.Services.AddScoped<IInstructorServices, InstructorsServices>();
         builder.Services.AddScoped<ITestimonialServices, TestimonialsServices>();
         builder.Services.AddScoped<IContentServices, ContentServices>();
-        builder.Services.AddScoped<ICourseVideoServices, CourseVideoServices>();
+        builder.Services.AddScoped<ICourseContentServices, CourseContentServices>();
         builder.Services.AddScoped<ITemplateServices, TemplatesServices>();
         builder.Services.AddScoped<IPurchaseRequestServices, PurchaseRequestServices>();
         builder.Services.AddScoped<IPurchaseServices, PurchaseServices>();
+        builder.Services.AddScoped<ICourseContentServices, CourseContentServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {

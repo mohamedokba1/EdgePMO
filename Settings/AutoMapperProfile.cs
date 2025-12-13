@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Dtos.Courses;
 using EdgePMO.API.Models;
 
 namespace EdgePMO.API.Settings
@@ -17,12 +18,56 @@ namespace EdgePMO.API.Settings
 
             CreateMap<Instructor, InstructorReadDto>();
 
+            // Course to CourseReadDto mapping
             CreateMap<Course, CourseReadDto>()
                 .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
                 .ForMember(dest => dest.Instructor, opt => opt.MapFrom(src => src.Instructor))
-                .ForMember(dest => dest.CourseVideos, opt => opt.MapFrom(src => src.CourseVideos))
-                .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.CourseUsers.Select(cu => cu.User)));
+                .ForMember(dest => dest.Content, opt =>
+                    opt.MapFrom(src => src.CourseOutline))
 
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))
+                .ForMember(dest => dest.Subtitle, opt => opt.MapFrom(src => src.Subtitle))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.Overview, opt => opt.MapFrom(src => src.Overview ?? src.Overview))
+                .ForMember(dest => dest.Sessions, opt => opt.MapFrom(src => src.Sessions))
+                .ForMember(dest => dest.Duration, opt => opt.MapFrom(src => src.Duration))
+                .ForMember(dest => dest.Level, opt => opt.MapFrom(src => src.Level))
+                .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
+                .ForMember(dest => dest.Rating, opt => opt.MapFrom(src => src.Rating))
+                .ForMember(dest => dest.CoursePictureUrl, opt => opt.MapFrom(src => src.CoursePictureUrl))
+                .ForMember(dest => dest.InstructorId, opt => opt.MapFrom(src => src.InstructorId))
+                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category))
+                .ForMember(dest => dest.Certification, opt => opt.MapFrom(src => src.Certification))
+                .ForMember(dest => dest.SoftwareUsed, opt => opt.MapFrom(src => src.SoftwareUsed ?? new List<string>()))
+                .ForMember(dest => dest.MainObjective, opt => opt.MapFrom(src => src.MainObjective ?? src.Description))
+                .ForMember(dest => dest.WhatStudentsLearn, opt => opt.MapFrom(src => src.WhatStudentsLearn ?? new List<string>()))
+                .ForMember(dest => dest.WhoShouldAttend, opt => opt.MapFrom(src => src.WhoShouldAttend ?? new List<string>()))
+                .ForMember(dest => dest.Requirements, opt => opt.MapFrom(src => src.Requirements ?? new List<string>()));
+
+            // CourseOutline to CourseContentDto mapping
+            CreateMap<CourseOutline, CourseContentReadDto>()
+                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+                .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order))
+                .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos ?? new List<CourseVideo>()))
+                .ForMember(dest => dest.Documents, opt => opt.MapFrom(src => src.Documents ?? new List<CourseDocument>()));
+
+            // CourseVideo to CourseVideoCreateDto mapping
+            CreateMap<CourseVideo, CourseVideoReadDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
+                .ForMember(dest => dest.DurationSeconds, opt => opt.MapFrom(src => src.DurationSeconds))
+                .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order));
+
+            // CourseDocument to CourseDocumentCreateDto mapping
+            CreateMap<CourseDocument, CourseDocumentReadDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.CourseDocumentId))
+                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.DocumentUrl));
+            
             CreateMap<UserTemplate, UserTemplateReadDto>()
                     .ForMember(d => d.TemplateId, opt => opt.MapFrom(s => s.Template.Id))
                     .ForMember(d => d.Name, opt => opt.MapFrom(s => s.Template.Name))

@@ -1,12 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace EdgePMO.API.Dtos
+namespace EdgePMO.API.Dtos.Courses
 {
-    public record CourseVideoCreateDto
+    public class CourseDocumentCreateDto
     {
-        //[Required]
-        public Guid CourseId { get; init; }
-
         [Required]
         [StringLength(500)]
         public string Title { get; init; } = null!;
@@ -16,11 +13,5 @@ namespace EdgePMO.API.Dtos
 
         [Required]
         public string Url { get; init; } = null!;
-
-        public int DurationSeconds { get; init; }
-
-        [Required]
-        [Range(1, 100)]
-        public int Order { get; init; }
     }
 }

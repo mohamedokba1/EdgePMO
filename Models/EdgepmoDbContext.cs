@@ -21,6 +21,7 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<Testimonial> Testimonials { get; set; }
     public DbSet<Certificate> Certificates { get; set; }
     public DbSet<CourseVideo> CourseVideos { get; set; }
+    public DbSet<CourseDocument> CourseDocuments{ get; set; }
     public DbSet<CourseUser> CourseUsers { get; set; }
     public DbSet<Template> Templates { get; set; }
     public DbSet<Purchase> Purchases { get; set; }
@@ -111,16 +112,73 @@ public partial class EdgepmoDbContext : DbContext
             .WithMany(c => c.Certificates)
             .HasForeignKey(c => c.CourseId);
 
+        // ===== CourseVideo CONFIGURATION =====
         modelBuilder.Entity<CourseVideo>(entity =>
         {
-            entity.HasKey(e => e.CourseVideoId);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.HasOne(e => e.Course)
-                  .WithMany(c => c.CourseVideos)
-                  .HasForeignKey(e => e.CourseId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.Url)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.DurationSeconds)
+                .IsRequired();
+
+            entity.Property(e => e.Order)
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(e => e.CourseOutline)
+                .WithMany(co => co.Videos)
+                .HasForeignKey(e => e.CourseOutlineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.CourseOutlineId);
+            entity.HasIndex(e => new { e.CourseOutlineId, e.Order })
+                .IsUnique();
         });
 
+        // ===== CourseDocument CONFIGURATION =====
+        modelBuilder.Entity<CourseDocument>(entity =>
+        {
+            entity.HasKey(e => e.CourseDocumentId);
+            entity.Property(e => e.CourseDocumentId).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.DocumentUrl)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(e => e.CourseOutline)
+                .WithMany(co => co.Documents)
+                .HasForeignKey(e => e.CourseOutlineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.CourseOutlineId);
+            entity.HasIndex(e => e.DocumentUrl)
+                .IsUnique();
+        });
+
+        // ===== CourseUser CONFIGURATION =====
         modelBuilder.Entity<CourseUser>(entity =>
         {
             entity.HasKey(e => new { e.CourseId, e.UserId });
@@ -135,8 +193,7 @@ public partial class EdgepmoDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ===========================================================
-
+        // ===== Course CONFIGURATION =====
         modelBuilder.Entity<Course>(entity =>
         {
             entity.HasKey(e => e.CourseId);
@@ -145,7 +202,7 @@ public partial class EdgepmoDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Subtitle).HasMaxLength(500);
             entity.Property(e => e.Description).IsRequired();
-            entity.Property(e => e.LongDescription).HasColumnType("text");
+            entity.Property(e => e.Overview).HasColumnType("text");
 
             entity.Property(e => e.Price).HasPrecision(10, 2);
             entity.Property(e => e.Rating).HasPrecision(3, 1);
@@ -195,35 +252,42 @@ public partial class EdgepmoDbContext : DbContext
             entity.HasIndex(e => e.InstructorId);
         });
 
-        // CourseOutline configuration
+        // ===== CourseOutline CONFIGURATION =====
         modelBuilder.Entity<CourseOutline>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
 
-            entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(500);
 
-            var outlineJsonOptions = new JsonSerializerOptions();
-            entity.Property(e => e.Items)
-                .HasConversion(
-                    v => JsonSerializer.Serialize(v, outlineJsonOptions),
-                    v => JsonSerializer.Deserialize<List<string>>(v, outlineJsonOptions) ?? new List<string>())
-                .HasColumnType("jsonb");
+            entity.Property(e => e.Order)
+                .HasDefaultValue(0);
 
-            entity.Property(e => e.Order).HasDefaultValue(0);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasOne(e => e.Course)
                 .WithMany(c => c.CourseOutline)
                 .HasForeignKey(e => e.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasMany(e => e.Videos)
+                .WithOne(v => v.CourseOutline)
+                .HasForeignKey(v => v.CourseOutlineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Documents)
+                .WithOne(d => d.CourseOutline)
+                .HasForeignKey(d => d.CourseOutlineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasIndex(e => e.CourseId);
             entity.HasIndex(e => new { e.CourseId, e.Order });
         });
-        //=========================================================
 
-        // CourseReview configuration
+        // ===== CourseReview CONFIGURATION =====
         modelBuilder.Entity<CourseReview>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -371,6 +435,7 @@ public partial class EdgepmoDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.UserId);
         });
+
         OnModelCreatingPartial(modelBuilder);
     }
 

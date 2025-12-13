@@ -13,6 +13,12 @@ namespace EdgePMO.API.Dtos
         public string? Description { get; set; }
 
         [StringLength(2000)]
+        public string? Subtitle { get; set; }
+
+        [StringLength(10000)]
+        public string? MainObjective { get; set; }
+
+        [StringLength(2000)]
         public string? Level { get; set; }
 
         [Required(ErrorMessage = "No. of sessions can not be null or empty")]
@@ -27,23 +33,29 @@ namespace EdgePMO.API.Dtos
         [StringLength(10000)]
         public string? Overview { get; set; }
 
-        [StringLength(10000)]
+        [MaxLength(20, ErrorMessage = "Maximum 20 learning points allowed")]
         public List<string> WhatStudentsLearn { get; set; } = new List<string>();
 
-        [StringLength(10000)]
+        [MaxLength(10, ErrorMessage = "Maximum 10 software requirements allowed")]
         public List<string> SoftwareRequirements{ get; set; } = new List<string>();
 
-        [StringLength(5000)]
+        [MaxLength(15, ErrorMessage = "Maximum 15 requirements allowed")]
         public List<string> Requirements { get; set; } = new List<string>();
 
-        [StringLength(5000)]
+        [MaxLength(20, ErrorMessage = "Maximum 20 audience groups allowed")]
         public List<string> WhoShouldAttend { get; set; } = new List<string>();
 
-        public List<CourseOutlinesDto> Outlines { get; set; }
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one course section is required")]
+        public List<CourseContentDto> Content { get; set; }
 
         [Range(0, double.MaxValue)]
         [Required]
         public double Price { get; set; }
+
+        public double? Duration { get; set; }
+
+        public bool HasCertificate { get; set; } = false;
 
         [Required]
         public Guid InstructorId { get; set; }

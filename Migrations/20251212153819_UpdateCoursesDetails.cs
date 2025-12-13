@@ -84,7 +84,7 @@ namespace EdgePMO.API.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "LongDescription",
+                name: "Overview",
                 table: "Courses",
                 type: "text",
                 nullable: true);
@@ -246,7 +246,7 @@ namespace EdgePMO.API.Migrations
                 table: "Courses");
 
             migrationBuilder.DropColumn(
-                name: "LongDescription",
+                name: "Overview",
                 table: "Courses");
 
             migrationBuilder.DropColumn(

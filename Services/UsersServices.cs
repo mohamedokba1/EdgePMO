@@ -333,7 +333,6 @@ namespace EdgePMO.API.Services
                         .ThenInclude(c => c.Instructor)
                 .Include(u => u.CourseUsers)
                     .ThenInclude(cu => cu.Course)
-                        .ThenInclude(c => c.CourseVideos)
                 .Include(u => u.UserTemplates)
                     .ThenInclude(ut => ut.Template);
 
@@ -367,7 +366,7 @@ namespace EdgePMO.API.Services
             UserReadDto? userDto = _mapper.Map<UserReadDto>(user);
 
             List<Course>? courses = user.CourseUsers?
-                .Where(cu => cu.Course != null && cu.Course.CourseVideos != null && cu.Course.CourseVideos.Any())
+                .Where(cu => cu.Course != null && cu.Course.CourseOutline != null && cu.Course.CourseOutline.Any())
                 .Select(cu => cu.Course)
                 .Distinct()
                 .ToList() ?? new List<Course>();

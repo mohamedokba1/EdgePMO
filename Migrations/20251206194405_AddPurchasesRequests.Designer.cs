@@ -112,7 +112,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
                 {
-                    b.Property<Guid>("CourseVideoId")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -137,11 +137,11 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("VideoUrl")
+                    b.Property<string>("Url")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("CourseVideoId");
+                    b.HasKey("Id");
 
                     b.HasIndex("CourseId");
 

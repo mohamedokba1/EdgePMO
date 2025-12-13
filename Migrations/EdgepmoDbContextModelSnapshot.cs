@@ -75,13 +75,16 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("Level")
                         .HasColumnType("text");
 
-                    b.Property<string>("LongDescription")
+                    b.Property<string>("MainObjective")
                         .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Overview")
+                        .HasColumnType("text");
 
                     b.Property<double>("Price")
                         .HasPrecision(10, 2)
@@ -124,6 +127,45 @@ namespace EdgePMO.API.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("EdgePMO.API.Models.CourseDocument", b =>
+                {
+                    b.Property<Guid>("CourseDocumentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CourseOutlineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("DocumentUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("CourseDocumentId");
+
+                    b.HasIndex("CourseOutlineId");
+
+                    b.HasIndex("DocumentUrl")
+                        .IsUnique();
+
+                    b.ToTable("CourseDocuments");
+                });
+
             modelBuilder.Entity("EdgePMO.API.Models.CourseOutline", b =>
                 {
                     b.Property<Guid>("Id")
@@ -138,10 +180,6 @@ namespace EdgePMO.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Items")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
 
                     b.Property<int>("Order")
                         .ValueGeneratedOnAdd()
@@ -232,11 +270,12 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
                 {
-                    b.Property<Guid>("CourseVideoId")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<Guid>("CourseId")
+                    b.Property<Guid>("CourseOutlineId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -245,25 +284,33 @@ namespace EdgePMO.API.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("integer");
 
                     b.Property<int>("Order")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
-                    b.Property<string>("VideoUrl")
+                    b.Property<string>("Url")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
-                    b.HasKey("CourseVideoId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("CourseOutlineId");
+
+                    b.HasIndex("CourseOutlineId", "Order")
+                        .IsUnique();
 
                     b.ToTable("CourseVideos");
                 });
@@ -704,6 +751,17 @@ namespace EdgePMO.API.Migrations
                     b.Navigation("Instructor");
                 });
 
+            modelBuilder.Entity("EdgePMO.API.Models.CourseDocument", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.CourseOutline", "CourseOutline")
+                        .WithMany("Documents")
+                        .HasForeignKey("CourseOutlineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CourseOutline");
+                });
+
             modelBuilder.Entity("EdgePMO.API.Models.CourseOutline", b =>
                 {
                     b.HasOne("EdgePMO.API.Models.Course", "Course")
@@ -759,13 +817,13 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
                 {
-                    b.HasOne("EdgePMO.API.Models.Course", "Course")
-                        .WithMany("CourseVideos")
-                        .HasForeignKey("CourseId")
+                    b.HasOne("EdgePMO.API.Models.CourseOutline", "CourseOutline")
+                        .WithMany("Videos")
+                        .HasForeignKey("CourseOutlineId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Course");
+                    b.Navigation("CourseOutline");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PasswordResetToken", b =>
@@ -874,13 +932,18 @@ namespace EdgePMO.API.Migrations
 
                     b.Navigation("CourseUsers");
 
-                    b.Navigation("CourseVideos");
-
                     b.Navigation("Purchases");
 
                     b.Navigation("Reviews");
 
                     b.Navigation("Testimonials");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.CourseOutline", b =>
+                {
+                    b.Navigation("Documents");
+
+                    b.Navigation("Videos");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Instructor", b =>

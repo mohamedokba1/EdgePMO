@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Dtos.Courses;
 using EdgePMO.API.Models;
+using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
@@ -13,13 +15,15 @@ namespace EdgePMO.API.Services
     {
         private readonly EdgepmoDbContext _context;
         private readonly IContentServices _contentServices;
+        private readonly ICourseContentServices _courseContentServices;
         private readonly IMapper _mapper;
 
-        public CoursesServices(EdgepmoDbContext context, IContentServices contentServices, IMapper mapper)
+        public CoursesServices(EdgepmoDbContext context, IContentServices contentServices, IMapper mapper, ICourseContentServices courseContentServices)
         {
             _context = context;
             _contentServices = contentServices;
             _mapper = mapper;
+            _courseContentServices = courseContentServices;
         }
 
         public async Task<Response> GetAllAsync()
@@ -31,7 +35,7 @@ namespace EdgePMO.API.Services
                 .Include(c => c.Instructor)
                 .Include(c => c.Testimonials)
                 .Include(c => c.Certificates)
-                .Include(c => c.CourseVideos)
+                .Include(c => c.CourseOutline)
                 .Include(c => c.CourseUsers)
                     .ThenInclude(cu => cu.User)
                 .ToListAsync();
@@ -52,7 +56,10 @@ namespace EdgePMO.API.Services
                 .Include(c => c.Instructor)
                 .Include(c => c.Testimonials)
                 .Include(c => c.Certificates)
-                .Include(c => c.CourseVideos)
+                .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Videos)
+                 .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Documents)
                 .Include(c => c.CourseUsers)
                     .ThenInclude(cu => cu.User)
                 .FirstOrDefaultAsync(c => c.CourseId == id);
@@ -91,15 +98,65 @@ namespace EdgePMO.API.Services
                 CourseId = Guid.NewGuid(),
                 Name = dto.Name,
                 Description = dto.Description,
+                Subtitle = dto.Subtitle,
                 CoursePictureUrl = dto.CoursePictureUrl,
-                LongDescription = dto.Overview,
+                MainObjective = dto.MainObjective,
+                Overview = dto.Overview,
                 WhatStudentsLearn = dto.WhatStudentsLearn,
-                //CourseOutline = dto.Outlines,
+                SoftwareUsed = dto.SoftwareRequirements,
+                Requirements = dto.Requirements,
+                WhoShouldAttend = dto.WhoShouldAttend,
+                Level = dto.Level,
+                Sessions = dto.Sessions,
+                Category = dto.Category,
+                Certification = dto.HasCertificate,
+                Duration = dto.Duration?.ToString() ?? null,
                 InstructorId = dto.InstructorId,
                 Price = dto.Price
             };
+
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
+
+            foreach(CourseContentDto? contentDto in dto.Content)
+            {
+                Response createOutlineResponse = await _courseContentServices.CreateCourseOutline(contentDto, course.CourseId);
+                
+                if(!createOutlineResponse.IsSuccess)
+                {
+                    return createOutlineResponse;
+                }
+                var testId = createOutlineResponse.Result["outlineId"].ToString();
+                Guid outlineId = testId.ToGuidOrDefault(Guid.Empty);
+
+                if (outlineId.Equals(Guid.Empty))
+                {
+                    await DeleteAsync(course.CourseId);
+                    response.IsSuccess = false;
+                    response.Message = "Failed to create course outline.";
+                    response.Code = HttpStatusCode.InternalServerError;
+                    return response;
+                }
+
+                foreach (CourseVideoCreateDto courseCreateDto in contentDto.Videos)
+                {
+                    Response attachVideoResponse = await _courseContentServices.CreateCourseVideo(courseCreateDto, outlineId);
+                    if(!attachVideoResponse.IsSuccess)
+                    {
+                        return attachVideoResponse;
+                    }
+                }
+
+                foreach (CourseDocumentCreateDto courseDocumentDto in contentDto.Documents)
+                {
+                    Response attachDocumentResponse = await _courseContentServices.CreateCourseDocuemnt(courseDocumentDto, outlineId);
+                    if (!attachDocumentResponse.IsSuccess)
+                    {
+                        return attachDocumentResponse;
+                    }
+                }
+            }
+            
 
             Response? courseResponse = await GetByIdAsync(course.CourseId);
             response.IsSuccess = true;
@@ -178,7 +235,7 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            string fileName = Path.GetFileName(dto.VideoUrl ?? string.Empty);
+            string fileName = Path.GetFileName(dto.Url ?? string.Empty);
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 response.IsSuccess = false;
@@ -232,10 +289,10 @@ namespace EdgePMO.API.Services
 
             CourseVideo video = new CourseVideo
             {
-                CourseId = dto.CourseId,
+                //CourseId = dto.CourseId,
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
-                VideoUrl = matchedRelative,
+                Url = matchedRelative,
                 DurationSeconds = dto.DurationSeconds,
                 Order = dto.Order
             };
@@ -514,7 +571,7 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            string? videoUrl = existing.VideoUrl;
+            string? videoUrl = existing.Url;
 
             _context.CourseVideos.Remove(existing);
             await _context.SaveChangesAsync();
