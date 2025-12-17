@@ -91,7 +91,7 @@ namespace EdgePMO.API.Services
                 {
                     using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromHours(2)))
                     {
-                        await file.CopyToAsync(fileStream, 1024 * 1024, cancellationTokenSource.Token);
+                        await file.CopyToAsync(fileStream, cancellationTokenSource.Token);
                     }
                 }
 
