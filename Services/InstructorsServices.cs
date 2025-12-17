@@ -1,3 +1,4 @@
+using AutoMapper;
 using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Models;
@@ -11,10 +12,12 @@ namespace EdgePMO.API.Services
     public class InstructorsServices : IInstructorServices
     {
         private readonly EdgepmoDbContext _context;
+        private readonly IMapper _mapper;
 
-        public InstructorsServices(EdgepmoDbContext context)
+        public InstructorsServices(EdgepmoDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         public async Task<Response> GetAllAsync()
@@ -27,7 +30,7 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Instructors retrieved successfully.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("instructors", JsonSerializer.SerializeToNode(instructors) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("instructors", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<InstructorReadDto>>(instructors)) ?? JsonValue.Create(Array.Empty<object>()));
             return response;
         }
 
