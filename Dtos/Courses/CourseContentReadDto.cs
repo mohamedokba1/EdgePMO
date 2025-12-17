@@ -4,6 +4,8 @@ namespace EdgePMO.API.Dtos.Courses
 {
     public class CourseContentReadDto
     {
+        public Guid Id { get; set; }
+
         [Required(ErrorMessage = "The title of outline section can not be null or empty")]
         [StringLength(500)]
         public string Title { get; set; }

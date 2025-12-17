@@ -31,5 +31,9 @@
         public ICollection<Purchase> Purchases { get; set; } = new List<Purchase>();
         public List<CourseOutline> CourseOutline { get; set; } = new();
         public List<CourseReview> CourseReview{ get; set; } = new();
+
+        public bool? IsActive { get; set; }
+        public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
     }
 }

@@ -217,8 +217,9 @@ public class Program
         // Configure Kestrel server limits
         builder.WebHost.ConfigureKestrel((context, options) =>
         {
+            options.AllowSynchronousIO = false;
             options.Limits.MaxRequestBodySize = 3L * 1024 * 1024 * 1024; // 3 GB
-            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(5);
+            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(12);
             options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
             options.Limits.Http2.MaxFrameSize = 1024 * 1024; // 1 MB frame size
         });

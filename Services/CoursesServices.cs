@@ -115,7 +115,9 @@ namespace EdgePMO.API.Services
                 Certification = dto.HasCertificate,
                 Duration = dto.Duration?.ToString() ?? null,
                 InstructorId = dto.InstructorId,
-                Price = dto.Price
+                Price = dto.Price,
+                IsActive = true,
+                UpdatedAt = DateTime.UtcNow
             };
 
             _context.Courses.Add(course);
@@ -181,19 +183,65 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            if (dto.InstructorId != existing.InstructorId)
-            {
-                bool instructorExists = await _context.Instructors.AnyAsync(i => i.InstructorId == dto.InstructorId);
-                if (!instructorExists)
-                {
-                    response.IsSuccess = false;
-                    response.Message = "Instructor not found.";
-                    response.Code = HttpStatusCode.BadRequest;
-                    return response;
-                }
-            }
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                existing.Name = dto.Name;
 
-            _context.Entry(existing).CurrentValues.SetValues(dto);
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+                existing.Description = dto.Description;
+
+            if (dto.Price.HasValue)
+                existing.Price = dto.Price.Value;
+
+            if (dto.IsActive.HasValue)
+                existing.IsActive = dto.IsActive.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.CoursePictureUrl))
+                existing.CoursePictureUrl = dto.CoursePictureUrl;
+
+            if (!string.IsNullOrWhiteSpace(dto.Overview))
+                existing.Overview = dto.Overview;
+
+            if (!string.IsNullOrWhiteSpace(dto.Subtitle))
+                existing.Subtitle = dto.Subtitle;
+
+            if (!string.IsNullOrWhiteSpace(dto.MainObjective))
+                existing.MainObjective = dto.MainObjective;
+
+            if (dto.Sessions.HasValue)
+                existing.Sessions = dto.Sessions.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.Level))
+                existing.Level = dto.Level;
+
+            if (dto.Rating.HasValue)
+                existing.Rating = dto.Rating.Value;
+
+            if (dto.Students.HasValue)
+                existing.Students = dto.Students.Value;
+
+            if (dto.InstructorId.HasValue)
+                existing.InstructorId = dto.InstructorId.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.Category))
+                existing.Category = dto.Category;
+
+            if (dto.Certification.HasValue)
+                existing.Certification = dto.Certification.Value;
+
+            if (dto.SoftwareUsed != null && dto.SoftwareUsed.Count > 0)
+                existing.SoftwareUsed = dto.SoftwareUsed;
+
+            if (dto.WhatStudentsLearn != null && dto.WhatStudentsLearn.Count > 0)
+                existing.WhatStudentsLearn = dto.WhatStudentsLearn;
+
+            if (dto.WhoShouldAttend != null && dto.WhoShouldAttend.Count > 0)
+                existing.WhoShouldAttend = dto.WhoShouldAttend;
+
+            if (dto.Requirements != null && dto.Requirements.Count > 0)
+                existing.Requirements = dto.Requirements;
+
+            existing.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             Response updatedCourse = await GetByIdAsync(existing.CourseId);
@@ -256,7 +304,7 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            Response listResp = await _contentServices.ListAssetsAsync();
+            Response listResp = await _contentServices.ListCoursesAssetsAsync();
             if (!listResp.IsSuccess)
             {
                 response.IsSuccess = false;
@@ -266,7 +314,7 @@ namespace EdgePMO.API.Services
             }
 
             string? matchedRelative = null;
-            if (listResp.Result.TryGetPropertyValue("files", out JsonNode? filesNode) && filesNode is JsonArray filesArray)
+            if (listResp.Result.TryGetPropertyValue("courses", out JsonNode? filesNode) && filesNode is JsonArray filesArray)
             {
                 foreach (JsonNode? n in filesArray)
                 {
@@ -292,12 +340,13 @@ namespace EdgePMO.API.Services
 
             CourseVideo video = new CourseVideo
             {
-                //CourseId = dto.CourseId,
+                CourseOutlineId = dto.OutlineId,
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = matchedRelative,
                 DurationSeconds = dto.DurationSeconds,
-                Order = dto.Order
+                Order = dto.Order,
+
             };
 
             _context.CourseVideos.Add(video);

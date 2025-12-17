@@ -133,7 +133,6 @@ namespace EdgePMO.API.Services
             }
         }
 
-
         public Task<Response> ListAssetsAsync()
         {
             Response response = new Response();
@@ -222,6 +221,35 @@ namespace EdgePMO.API.Services
             path = Regex.Replace(path, @"/+", "/");
 
             return path;
+        }
+
+        public Task<Response> ListCoursesAssetsAsync()
+        {
+            Response response = new Response();
+
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
+
+            string coursesPath = Path.Combine(webRoot, "courses");
+
+            if (!Directory.Exists(webRoot))
+            {
+                response.IsSuccess = true;
+                response.Message = "No assets found.";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("courses", JsonSerializer.SerializeToNode(Array.Empty<string>()) ?? JsonValue.Create(Array.Empty<object>()));
+                return Task.FromResult(response);
+            }
+
+            string[]? files = Directory.EnumerateFiles(coursesPath, "*", SearchOption.AllDirectories)
+                                       .Select(f => $"{Path.GetFullPath(f)}")
+                                       .ToArray();
+
+            response.IsSuccess = true;
+            response.Message = "Assets retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(files) ?? JsonValue.Create(Array.Empty<object>()));
+            return Task.FromResult(response);
         }
     }
 }

@@ -26,6 +26,13 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
+        [HttpGet("courses-assets")]
+        public async Task<IActionResult> ListCoursesAssets()
+        {
+            Response response = await _contentServices.ListCoursesAssetsAsync();
+            return StatusCode((int)response.Code, response);
+        }
+
         [HttpPost("upload")]
         public async Task<IActionResult> UploadMedia(IFormFile file, [FromForm] string? path)
         {
