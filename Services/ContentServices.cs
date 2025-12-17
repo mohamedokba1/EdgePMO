@@ -39,7 +39,7 @@ namespace EdgePMO.API.Services
             if (file.Length > maxSize)
             {
                 response.IsSuccess = false;
-                response.Message = $"File is too large. Max allowed is {maxSize} bytes.";
+                response.Message = $"File is too large. Max allowed is {maxSize / (1024 * 1024 * 1024)} GB.";
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
@@ -76,13 +76,30 @@ namespace EdgePMO.API.Services
             }
 
             string filePath = Path.Combine(webRoot, file.FileName);
+            string tempFilePath = filePath + ".tmp";
 
             try
             {
-                await using (FileStream stream = File.Create(filePath))
+                // Write to temporary file first for safety
+                await using (var fileStream = new FileStream(
+                    tempFilePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 1024 * 1024, // 1 MB buffer
+                    useAsync: true))
                 {
-                    await file.CopyToAsync(stream);
+                    using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromHours(2)))
+                    {
+                        await file.CopyToAsync(fileStream, 1024 * 1024, cancellationTokenSource.Token);
+                    }
                 }
+
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+                File.Move(tempFilePath, filePath, overwrite: true);
 
                 response.IsSuccess = true;
                 response.Message = "File uploaded successfully.";
@@ -93,14 +110,29 @@ namespace EdgePMO.API.Services
                 response.Result.Add("size", JsonValue.Create(file.Length));
                 return response;
             }
+            catch (OperationCanceledException)
+            {
+                if (File.Exists(tempFilePath))
+                    File.Delete(tempFilePath);
+
+                response.IsSuccess = false;
+                response.Message = "File upload timed out. Please try again with a smaller file or better connection.";
+                response.Code = HttpStatusCode.RequestTimeout;
+                return response;
+            }
             catch (Exception ex)
             {
+                // Clean up temp file
+                if (File.Exists(tempFilePath))
+                    File.Delete(tempFilePath);
+
                 response.IsSuccess = false;
                 response.Message = $"File upload failed: {ex.Message}";
                 response.Code = HttpStatusCode.InternalServerError;
                 return response;
             }
         }
+
 
         public Task<Response> ListAssetsAsync()
         {

@@ -17,7 +17,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EdgePMP.API;
 
@@ -211,14 +210,19 @@ public class Program
         builder.Services.Configure<FormOptions>(options =>
         {
             options.ValueLengthLimit = int.MaxValue;
-            options.MultipartBodyLengthLimit = 3L * 1024 * 1024 * 1024;
+            options.MultipartBodyLengthLimit = 3L * 1024 * 1024 * 1024; // 3 GB
+            options.MemoryBufferThreshold = 1024 * 1024; // 1 MB before writing to disk
         });
 
         // Configure Kestrel server limits
         builder.WebHost.ConfigureKestrel((context, options) =>
         {
-            options.Limits.MaxRequestBodySize = 3L * 1024 * 1024 * 1024;
+            options.Limits.MaxRequestBodySize = 3L * 1024 * 1024 * 1024; // 3 GB
+            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(5);
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
+            options.Limits.Http2.MaxFrameSize = 1024 * 1024; // 1 MB frame size
         });
+
 
         WebApplication? app = builder.Build();
 
