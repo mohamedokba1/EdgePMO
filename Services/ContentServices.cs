@@ -1,10 +1,12 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Settings;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace EdgePMO.API.Services
 {
@@ -19,10 +21,9 @@ namespace EdgePMO.API.Services
             _settings = settings.Value;
         }
 
-        public async Task<Response> UploadMediaAsync(IFormFile file)
+        public async Task<Response> UploadMediaAsync(IFormFile file, string? relativePath = null)
         {
             Response response = new Response();
-
             long maxSize = _settings.MaxFileSizeBytes;
             string[] allowedExtensions = _settings.AllowedExtensions ?? Array.Empty<string>();
             string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
@@ -44,7 +45,6 @@ namespace EdgePMO.API.Services
             }
 
             string? ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-
             if (!allowedExtensions.Contains(ext))
             {
                 response.IsSuccess = false;
@@ -53,23 +53,53 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
-            Directory.CreateDirectory(webRoot);
-
-            string? filePath = Path.Combine(webRoot, file.FileName);
-
-            await using (FileStream? stream = File.Create(filePath))
+            // Build the upload path
+            string uploadPath = uploadsRelative;
+            if (!string.IsNullOrWhiteSpace(relativePath))
             {
-                await file.CopyToAsync(stream);
+                string sanitizedPath = SanitizePath(relativePath);
+                uploadPath = Path.Combine(uploadsRelative, sanitizedPath);
             }
 
-            response.IsSuccess = true;
-            response.Message = "File uploaded successfully.";
-            response.Code = HttpStatusCode.Created;
-            response.Result.Add("relativePath", JsonValue.Create(webRoot));
-            response.Result.Add("fileName", JsonValue.Create(file.FileName));
-            response.Result.Add("size", JsonValue.Create(file.Length));
-            return response;
+            string webRoot = Path.Combine("/var/www/", uploadPath);
+
+            try
+            {
+                Directory.CreateDirectory(webRoot);
+            }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"Failed to create directory: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+                return response;
+            }
+
+            string filePath = Path.Combine(webRoot, file.FileName);
+
+            try
+            {
+                await using (FileStream stream = File.Create(filePath))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                response.IsSuccess = true;
+                response.Message = "File uploaded successfully.";
+                response.Code = HttpStatusCode.Created;
+                response.Result.Add("relativePath", JsonValue.Create(uploadPath));
+                response.Result.Add("fullPath", JsonValue.Create(webRoot));
+                response.Result.Add("fileName", JsonValue.Create(file.FileName));
+                response.Result.Add("size", JsonValue.Create(file.Length));
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"File upload failed: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+                return response;
+            }
         }
 
         public Task<Response> ListAssetsAsync()
@@ -144,6 +174,22 @@ namespace EdgePMO.API.Services
             //string filePath = Path.Combine(webRoot, safeFileName);
 
             return Task.FromResult(File.Exists(filePath));
+        }
+
+        public string SanitizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            path = path.Trim();
+            path = path.TrimStart('/', '\\');
+            path = path.Replace("\\", "/");
+            path = Regex.Replace(path, @"\.\.(/|\\|$)", string.Empty);
+            path = path.Replace("./", string.Empty);
+            path = path.Replace("/..", string.Empty);
+            path = Regex.Replace(path, @"/+", "/");
+
+            return path;
         }
     }
 }

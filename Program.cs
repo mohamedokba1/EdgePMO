@@ -6,6 +6,7 @@ using EdgePMO.API.Services;
 using EdgePMO.API.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
@@ -205,6 +206,20 @@ public class Program
                 .WithExposedHeaders("Content-Disposition"); // If you need to expose headers
             });
         });
+
+        // Configure large file uploads (3 GB)
+        builder.Services.Configure<FormOptions>(options =>
+        {
+            options.ValueLengthLimit = int.MaxValue;
+            options.MultipartBodyLengthLimit = 3L * 1024 * 1024 * 1024;
+        });
+
+        // Configure Kestrel server limits
+        builder.WebHost.ConfigureKestrel((context, options) =>
+        {
+            options.Limits.MaxRequestBodySize = 3L * 1024 * 1024 * 1024;
+        });
+
         WebApplication? app = builder.Build();
 
         using (IServiceScope? scope = app.Services.CreateScope())

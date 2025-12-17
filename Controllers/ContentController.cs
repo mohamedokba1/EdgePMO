@@ -2,6 +2,7 @@
 using EdgePMO.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace EdgePMO.API.Controllers
 {
@@ -10,12 +11,11 @@ namespace EdgePMO.API.Controllers
     [Authorize(Policy = "Admin")]
     public class ContentController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private const long MaxFileSize = 3L * 1024 * 1024 * 1024;
         private readonly IContentServices _contentServices;
 
-        public ContentController(IWebHostEnvironment env, IContentServices contentServices)
+        public ContentController(IContentServices contentServices)
         {
-            _env = env;
             _contentServices = contentServices;
         }
 
@@ -27,9 +27,25 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadMedia(IFormFile file)
+        public async Task<IActionResult> UploadMedia(IFormFile file, [FromForm] string? path)
         {
-            Response response = await _contentServices.UploadMediaAsync(file);
+            Response response = new Response();
+            if (file == null || file.Length == 0)
+            {
+                response.IsSuccess = false;
+                response.Message = "No file provided";
+                response.Code = HttpStatusCode.BadRequest;
+                return StatusCode((int)response.Code, response);
+            }
+
+            if (file.Length > MaxFileSize)
+            {
+                response.IsSuccess = false;
+                response.Message = $"File size exceeds {MaxFileSize / (1024 * 1024 * 1024)} GB limit";
+                response.Code = HttpStatusCode.BadRequest;
+                return StatusCode((int)response.Code, response);
+            }
+            response = await _contentServices.UploadMediaAsync(file, path);
             return StatusCode((int)response.Code, response);
         }
 
@@ -43,7 +59,7 @@ namespace EdgePMO.API.Controllers
                 {
                     IsSuccess = false,
                     Message = "Invalid filename",
-                    Code = System.Net.HttpStatusCode.BadRequest
+                    Code = HttpStatusCode.BadRequest
                 });
             }
 
