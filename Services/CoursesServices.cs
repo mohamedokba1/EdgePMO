@@ -192,6 +192,9 @@ namespace EdgePMO.API.Services
             if (dto.Price.HasValue)
                 existing.Price = dto.Price.Value;
 
+            if (!string.IsNullOrEmpty(dto.Duration))
+                existing.Duration = dto.Duration;
+
             if (dto.IsActive.HasValue)
                 existing.IsActive = dto.IsActive.Value;
 

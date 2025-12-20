@@ -107,7 +107,6 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("{id:guid}/students/status")]
-        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);

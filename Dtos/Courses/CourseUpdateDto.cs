@@ -14,6 +14,9 @@ namespace EdgePMO.API.Dtos
         [StringLength(2000)]
         public string? Description { get; set; }
 
+        [StringLength(10)]
+        public string? Duration { get; set; }
+
         public double? Price { get; set; }
 
         [StringLength(1000)]
