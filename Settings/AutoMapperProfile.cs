@@ -14,17 +14,16 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.MinValue));
+
+
             CreateMap<CourseVideo, CourseVideoReadDto>();
 
             CreateMap<Instructor, InstructorReadDto>();
 
-            // Course to CourseReadDto mapping
             CreateMap<Course, CourseReadDto>()
                 .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
                 .ForMember(dest => dest.Instructor, opt => opt.MapFrom(src => src.Instructor))
-                .ForMember(dest => dest.Content, opt =>
-                    opt.MapFrom(src => src.CourseOutline))
-
+                .ForMember(dest => dest.Content, opt => opt.MapFrom(src => src.CourseOutline))
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))
                 .ForMember(dest => dest.Subtitle, opt => opt.MapFrom(src => src.Subtitle))
@@ -43,16 +42,15 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.MainObjective, opt => opt.MapFrom(src => src.MainObjective ?? src.Description))
                 .ForMember(dest => dest.WhatStudentsLearn, opt => opt.MapFrom(src => src.WhatStudentsLearn ?? new List<string>()))
                 .ForMember(dest => dest.WhoShouldAttend, opt => opt.MapFrom(src => src.WhoShouldAttend ?? new List<string>()))
-                .ForMember(dest => dest.Requirements, opt => opt.MapFrom(src => src.Requirements ?? new List<string>()));
+                .ForMember(dest => dest.Requirements, opt => opt.MapFrom(src => src.Requirements ?? new List<string>()))
+                .ForMember(dest => dest.StudentsList, opt => opt.MapFrom(src => src.CourseUsers.Select(cu => cu.User).ToList()));
 
-            // CourseOutline to CourseContentDto mapping
             CreateMap<CourseOutline, CourseContentReadDto>()
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order))
                 .ForMember(dest => dest.Videos, opt => opt.MapFrom(src => src.Videos ?? new List<CourseVideo>()))
                 .ForMember(dest => dest.Documents, opt => opt.MapFrom(src => src.Documents ?? new List<CourseDocument>()));
 
-            // CourseVideo to CourseVideoCreateDto mapping
             CreateMap<CourseVideo, CourseVideoReadDto>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
@@ -61,7 +59,6 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.DurationSeconds, opt => opt.MapFrom(src => src.DurationSeconds))
                 .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order));
 
-            // CourseDocument to CourseDocumentCreateDto mapping
             CreateMap<CourseDocument, CourseDocumentReadDto>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.CourseDocumentId))
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))

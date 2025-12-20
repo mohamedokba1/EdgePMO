@@ -18,7 +18,6 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet]
-        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             Response? courses = await _courseServices.GetAllAsync();
@@ -26,7 +25,6 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        [Authorize]
         public async Task<IActionResult> Get(Guid id)
         {
             Response? courseResponse = await _courseServices.GetByIdAsync(id);

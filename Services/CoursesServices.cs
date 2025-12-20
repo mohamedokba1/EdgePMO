@@ -431,9 +431,7 @@ namespace EdgePMO.API.Services
                                               .ToListAsync();
 
             HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
-
             List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
-
             List<object>? enrolled = new List<object>();
             List<string>? alreadyEnrolled = new List<string>();
 
@@ -458,6 +456,10 @@ namespace EdgePMO.API.Services
                 enrolled.Add(new { userId = user.Id, email = user.Email });
             }
 
+            if (!course.Students.HasValue)
+                course.Students = 0;
+
+            course.Students += enrolled.Count;
             await _context.SaveChangesAsync();
 
             response.IsSuccess = true;

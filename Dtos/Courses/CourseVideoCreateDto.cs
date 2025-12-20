@@ -10,20 +10,20 @@ namespace EdgePMO.API.Dtos
         [Required(ErrorMessage = "Outline Id can not be null or empty")]
         public Guid OutlineId { get; init; }
 
-        [Required]
+        [Required(ErrorMessage = "Video title can not be null or empty")]
         [StringLength(500)]
         public string Title { get; init; } = null!;
 
         [StringLength(2000)]
         public string? Description { get; init; }
 
-        [Required]
+        [Required(ErrorMessage = "Video url can not be null or empty")]
         public string Url { get; init; } = null!;
 
         public int DurationSeconds { get; init; }
 
         [Required]
-        [Range(1, 100)]
+        [Range(1, 100, ErrorMessage ="Video order can not be null or empty")]
         public int Order { get; init; }
     }
 }
