@@ -61,7 +61,8 @@ namespace EdgePMO.API.Services
             Instructor? instructor = new Instructor
             {
                 InstructorName = dto.InstructorName.Trim(),
-                Profile = dto.Profile?.Trim()
+                Profile = dto.Profile?.Trim(),
+                ProfileImageUrl = dto.ProfileImageUrl?.Trim()
             };
 
             _context.Instructors.Add(instructor);
@@ -86,12 +87,23 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            _context.Entry(existing).CurrentValues.SetValues(instructor);
+            if (!string.IsNullOrEmpty(instructor.InstructorName))
+            {
+                existing.InstructorName = instructor.InstructorName.Trim();
+            }
+            if (!string.IsNullOrEmpty(instructor.Profile))
+            {
+                existing.Profile = instructor.Profile.Trim();
+            }
+            if (!string.IsNullOrEmpty(instructor.ProfileImageUrl))
+            {
+                existing.ProfileImageUrl = instructor.ProfileImageUrl.Trim();
+            }
+
             await _context.SaveChangesAsync();
             response.IsSuccess = true;
             response.Message = "Instructor updated successfully.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("instructor", JsonSerializer.SerializeToNode(existing));
             return response;
         }
 

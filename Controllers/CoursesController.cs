@@ -106,7 +106,7 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
-        [HttpGet("{id:guid}/students/status")]
+        [HttpPost("{id:guid}/students/status")]
         public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);
