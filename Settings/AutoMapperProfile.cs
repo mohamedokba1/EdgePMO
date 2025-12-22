@@ -28,7 +28,6 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))
                 .ForMember(dest => dest.Subtitle, opt => opt.MapFrom(src => src.Subtitle))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
-                .ForMember(dest => dest.Overview, opt => opt.MapFrom(src => src.Overview ?? src.Overview))
                 .ForMember(dest => dest.Sessions, opt => opt.MapFrom(src => src.Sessions))
                 .ForMember(dest => dest.Duration, opt => opt.MapFrom(src => src.Duration))
                 .ForMember(dest => dest.Level, opt => opt.MapFrom(src => src.Level))
@@ -55,7 +54,7 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
-                .ForMember(dest => dest.DurationSeconds, opt => opt.MapFrom(src => src.DurationSeconds))
+                .ForMember(dest => dest.DurationSeconds, opt => opt.MapFrom(src => src.DurationMinutes))
                 .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order));
 
             CreateMap<CourseDocument, CourseDocumentReadDto>()

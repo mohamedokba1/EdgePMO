@@ -8,6 +8,9 @@
         public decimal Price { get; init; }
         public string? Category { get; init; }
         public string? CoverImageUrl { get; init; }
+        public string? Format { get; init; }
+        public string? Type { get; init; }
+        public string? Size { get; init; }
         public bool IsActive { get; init; }
         public string? FilePath { get; init; }
         public DateTime CreatedAt { get; init; }

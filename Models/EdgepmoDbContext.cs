@@ -129,7 +129,7 @@ public partial class EdgepmoDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(500);
 
-            entity.Property(e => e.DurationSeconds)
+            entity.Property(e => e.DurationMinutes)
                 .IsRequired();
 
             entity.Property(e => e.Order)

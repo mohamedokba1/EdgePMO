@@ -89,7 +89,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = dto.Url?.Trim(),
-                DurationSeconds = dto.DurationSeconds,
+                DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order
             };
 
@@ -133,7 +133,7 @@ namespace EdgePMO.API.Services
             existing.Title = dto.Title?.Trim();
             existing.Description = dto.Description?.Trim();
             existing.Url = dto.Url?.Trim();
-            existing.DurationSeconds = dto.DurationSeconds;
+            existing.DurationMinutes = dto.DurationSeconds;
             existing.Order = dto.Order;
 
             await _context.SaveChangesAsync();
@@ -291,7 +291,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = dto.Url?.Replace("\\", "/"),
-                DurationSeconds = dto.DurationSeconds,
+                DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order
             };
 

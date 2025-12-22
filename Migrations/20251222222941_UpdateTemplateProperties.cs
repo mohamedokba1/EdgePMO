@@ -1,0 +1,51 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace EdgePMO.API.Migrations
+{
+    /// <inheritdoc />
+    public partial class UpdateTemplateProperties : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "Format",
+                table: "Templates",
+                type: "text",
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Size",
+                table: "Templates",
+                type: "text",
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Type",
+                table: "Templates",
+                type: "text",
+                nullable: false,
+                defaultValue: "");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "Format",
+                table: "Templates");
+
+            migrationBuilder.DropColumn(
+                name: "Size",
+                table: "Templates");
+
+            migrationBuilder.DropColumn(
+                name: "Type",
+                table: "Templates");
+        }
+    }
+}

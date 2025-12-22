@@ -127,7 +127,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<int>("DurationSeconds")
+                    b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");
 
                     b.Property<int>("Order")

@@ -62,6 +62,7 @@ namespace EdgePMO.API.Services
             {
                 InstructorName = dto.InstructorName.Trim(),
                 Profile = dto.Profile?.Trim(),
+                Title = dto.Title?.Trim(),
                 ProfileImageUrl = dto.ProfileImageUrl?.Trim()
             };
 
@@ -98,6 +99,10 @@ namespace EdgePMO.API.Services
             if (!string.IsNullOrEmpty(instructor.ProfileImageUrl))
             {
                 existing.ProfileImageUrl = instructor.ProfileImageUrl.Trim();
+            }
+            if (!string.IsNullOrEmpty(instructor.Title))
+            {
+                existing.Title = instructor.Title.Trim();
             }
 
             await _context.SaveChangesAsync();

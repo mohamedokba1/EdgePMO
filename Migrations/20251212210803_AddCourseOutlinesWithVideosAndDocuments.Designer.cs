@@ -291,7 +291,7 @@ namespace EdgePMO.API.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<int>("DurationSeconds")
+                    b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");
 
                     b.Property<int>("Order")

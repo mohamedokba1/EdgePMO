@@ -347,7 +347,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = matchedRelative,
-                DurationSeconds = dto.DurationSeconds,
+                DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order,
 
             };
@@ -661,8 +661,8 @@ namespace EdgePMO.API.Services
             if (!string.IsNullOrEmpty(dto.Url))
                 existing.Url = dto.Url.Trim();
 
-            if (dto.DurationSeconds.HasValue)
-                existing.DurationSeconds = dto.DurationSeconds.Value;
+            if (dto.DurationMinutes.HasValue)
+                existing.DurationMinutes = dto.DurationMinutes.Value;
 
             if (dto.Order.HasValue)
                 existing.Order = dto.Order.Value;

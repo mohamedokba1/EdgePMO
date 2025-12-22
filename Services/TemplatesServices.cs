@@ -28,6 +28,7 @@ namespace EdgePMO.API.Services
 
             List<Template>? list = await _context.Templates
                 .AsNoTracking()
+                .Where(t => t.IsActive)
                 .Include(t => t.UserTemplates)
                 .ToListAsync();
 
@@ -41,6 +42,9 @@ namespace EdgePMO.API.Services
                 CoverImageUrl = t.CoverImageUrl,
                 IsActive = t.IsActive,
                 FilePath = t.FilePath,
+                Format = t.Format,
+                Type = t.Type,
+                Size = t.Size,
                 CreatedAt = t.CreatedAt,
                 UpdatedAt = t.UpdatedAt,
                 UsersPurchased = (t.UserTemplates)
@@ -67,6 +71,7 @@ namespace EdgePMO.API.Services
 
             Template? template = await _context.Templates
                 .AsNoTracking()
+                .Where(t => t.IsActive)
                 .Include(t => t.UserTemplates)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
@@ -112,14 +117,6 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
 
-            //if (!await _contentServices.FileExistsAsync(dto.FilePath) || !await _contentServices.FileExistsAsync(dto.CoverImageUrl))
-            //{
-            //    response.IsSuccess = false;
-            //    response.Message = "File(s) does not exist.";
-            //    response.Code = HttpStatusCode.BadRequest;
-            //    return response;
-            //}
-
             Template? template = new Template
             {
                 Id = Guid.NewGuid(),
@@ -128,8 +125,11 @@ namespace EdgePMO.API.Services
                 Price = dto.Price,
                 Category = dto.Category,
                 CoverImageUrl = dto.CoverImageUrl,
-                IsActive = dto.IsActive,
+                IsActive = true,
                 FilePath = dto.FilePath,
+                Type = dto.Type,
+                Format = dto.Format,
+                Size = dto.Size,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -140,7 +140,6 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Template created.";
             response.Code = HttpStatusCode.Created;
-            response.Result.Add("template", JsonSerializer.SerializeToNode(template) ?? JsonValue.Create(new { }));
             return response;
         }
 
@@ -157,30 +156,55 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.FilePath))
+            if (!string.IsNullOrWhiteSpace(dto.Name))
             {
-                bool fileExists = await _contentServices.FileExistsAsync(dto.FilePath);
-                if (!fileExists)
-                {
-                    response.IsSuccess = false;
-                    response.Message = "FilePath does not exist.";
-                    response.Code = HttpStatusCode.BadRequest;
-                    return response;
-                }
+                existing.Name = dto.Name.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+            {
+                existing.Description = dto.Description?.Trim();
+            }
+
+            if (dto.Price.HasValue)
+            {
+                existing.Price = dto.Price.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Category))
+            {
+                existing.Category = dto.Category;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.CoverImageUrl))
             {
-                bool imageExists = await _contentServices.FileExistsAsync(dto.CoverImageUrl);
-                if (!imageExists)
-                {
-                    response.IsSuccess = false;
-                    response.Message = "CoverImageUrl does not exist.";
-                    response.Code = HttpStatusCode.BadRequest;
-                    return response;
-                }
+                existing.CoverImageUrl = dto.CoverImageUrl;
             }
-            _mapper.Map(dto, existing);
+
+            if (!string.IsNullOrWhiteSpace(dto.FilePath))
+            {
+                existing.FilePath = dto.FilePath;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Type))
+            {
+                existing.Type = dto.Type;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Format))
+            {
+                existing.Format = dto.Format;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Size))
+            {
+                existing.Size = dto.Size;
+            }
+
+            if (dto.IsActive.HasValue)
+            {
+                existing.IsActive = dto.IsActive.Value;
+            }
 
             existing.UpdatedAt = DateTime.UtcNow;
             _context.Entry(existing).Property(e => e.UpdatedAt).IsModified = true;
@@ -190,7 +214,6 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Template updated.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("template", JsonSerializer.SerializeToNode(existing) ?? JsonValue.Create(new { }));
             return response;
         }
 

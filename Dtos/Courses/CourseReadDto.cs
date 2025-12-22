@@ -8,7 +8,6 @@ namespace EdgePMO.API.Dtos
         public string Name { get; init; } = null!;
         public string? Subtitle { get; init; }
         public string? Description { get; init; }
-        public string? Overview { get; init; }
         public int Sessions { get; init; }
         public string? Duration { get; init; }
         public string? Level { get; init; }

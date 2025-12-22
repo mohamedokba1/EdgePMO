@@ -9,6 +9,9 @@
         public string Category { get; set; }
         public string CoverImageUrl { get; set; }
         public string FilePath { get; set; }
+        public string Type { get; set; }
+        public string Format { get; set; }
+        public string Size { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
