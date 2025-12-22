@@ -35,7 +35,6 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Price))
                 .ForMember(dest => dest.Rating, opt => opt.MapFrom(src => src.Rating))
                 .ForMember(dest => dest.CoursePictureUrl, opt => opt.MapFrom(src => src.CoursePictureUrl))
-                .ForMember(dest => dest.InstructorId, opt => opt.MapFrom(src => src.InstructorId))
                 .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category))
                 .ForMember(dest => dest.Certification, opt => opt.MapFrom(src => src.Certification))
                 .ForMember(dest => dest.SoftwareUsed, opt => opt.MapFrom(src => src.SoftwareUsed ?? new List<string>()))

@@ -59,7 +59,6 @@ namespace EdgePMO.API.Controllers
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Update(Guid id, CourseUpdateDto courseUpdateDto)
         {
-
             if (id != courseUpdateDto.CourseId)
             {
                 return StatusCode(400, new Response()

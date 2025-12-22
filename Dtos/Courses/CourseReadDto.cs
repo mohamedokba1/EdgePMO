@@ -16,7 +16,6 @@ namespace EdgePMO.API.Dtos
         public double? Rating { get; init; }
         public int? Students { get; init; }
         public string? CoursePictureUrl { get; init; }
-        public Guid InstructorId { get; init; }
         public InstructorReadDto? Instructor { get; init; }
         public string? Category { get; init; }
         public bool Certification { get; init; }
