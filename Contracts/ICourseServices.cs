@@ -10,6 +10,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> UpdateAsync(CourseUpdateDto dto);
         Task<Response> DeleteAsync(Guid id);
         Task<Response> AttachCourseVideoAsync(CourseVideoCreateDto dto);
+        Task<Response> UpdateCourseVideoAsync(CourseVideoUpdateDto dto);
         Task<Response> DeleteCourseVideoAsync(Guid courseVideoId);
         Task<Response> GetEnrolledUsersAsync(Guid courseId);
         Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> email);

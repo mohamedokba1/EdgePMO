@@ -638,5 +638,42 @@ namespace EdgePMO.API.Services
             response.Code = HttpStatusCode.NoContent;
             return response;
         }
+
+        public async Task<Response> UpdateCourseVideoAsync(CourseVideoUpdateDto dto)
+        {
+            Response response = new Response();
+
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(dto.CourseVideoId);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course video not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (!string.IsNullOrEmpty(dto.Title))
+                existing.Title = dto.Title.Trim();
+
+            if (!string.IsNullOrEmpty(dto.Description))
+                existing.Description = dto.Description.Trim();
+
+            if (!string.IsNullOrEmpty(dto.Url))
+                existing.Url = dto.Url.Trim();
+
+            if (dto.DurationSeconds.HasValue)
+                existing.DurationSeconds = dto.DurationSeconds.Value;
+
+            if (dto.Order.HasValue)
+                existing.Order = dto.Order.Value;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course video updated.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+
+        }
     }
 }

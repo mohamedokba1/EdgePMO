@@ -39,6 +39,14 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)created.Code, created);
         }
 
+        [HttpPut("video")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> UpdateCourseVideo(CourseVideoUpdateDto dto)
+        {
+            Response? created = await _courseServices.UpdateCourseVideoAsync(dto);
+            return StatusCode((int)created.Code, created);
+        }
+
         [HttpDelete("video/{id:guid}")]
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> DeleteCourseVideo(Guid id)
