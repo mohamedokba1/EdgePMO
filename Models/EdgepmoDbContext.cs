@@ -29,6 +29,9 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<PurchaseRequest> PurchaseRequests { get; set; }
     public DbSet<CourseOutline> CourseOutlines { get; set; }
     public DbSet<CourseReview> CourseReviews { get; set; }
+    public DbSet<KnowledgeHub> KnowledgeHubs { get; set; }
+    public DbSet<KnowledgeHubSection> KnowledgeHubSections { get; set; }
+    public DbSet<ContentBlock> ContentBlocks { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -434,6 +437,47 @@ public partial class EdgepmoDbContext : DbContext
 
             // Indexes
             entity.HasIndex(e => e.UserId);
+        });
+
+        // ===== KNOWLEDGE HUB CONFIGURATION =====
+        modelBuilder.Entity<KnowledgeHub>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Excerpt).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Author).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CoverImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.DocumentUrl).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+            entity.HasMany(e => e.Sections)
+                .WithOne(s => s.KnowledgeHub)
+                .HasForeignKey(s => s.KnowledgeHubId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeHubSection>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Heading).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasMany(e => e.Blocks)
+                .WithOne(b => b.Section)
+                .HasForeignKey(b => b.SectionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ContentBlock>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Content).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         OnModelCreatingPartial(modelBuilder);
