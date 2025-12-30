@@ -84,7 +84,7 @@ public class Program
         builder.Services.AddScoped<ITemplateServices, TemplatesServices>();
         builder.Services.AddScoped<IPurchaseRequestServices, PurchaseRequestServices>();
         builder.Services.AddScoped<IPurchaseServices, PurchaseServices>();
-        builder.Services.AddScoped<ICourseContentServices, CourseContentServices>();
+        builder.Services.AddScoped<ICourseReviewServices, CourseReviewServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {

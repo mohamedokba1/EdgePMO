@@ -66,7 +66,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("InstructorId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -359,7 +359,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");

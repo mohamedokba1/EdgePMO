@@ -32,7 +32,7 @@ namespace EdgePMO.API.Migrations
                 );
 
             migrationBuilder.AlterColumn<string>(
-                name: "Name",
+                name: "Header",
                 table: "Courses",
                 type: "character varying(255)",
                 maxLength: 255,
@@ -286,7 +286,7 @@ namespace EdgePMO.API.Migrations
                 oldType: "jsonb");
 
             migrationBuilder.AlterColumn<string>(
-                name: "Name",
+                name: "Header",
                 table: "Courses",
                 type: "text",
                 nullable: false,

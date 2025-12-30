@@ -81,7 +81,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("Overview")
                         .HasColumnType("text");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -210,15 +210,12 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("CourseId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CourseId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -228,7 +225,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("double precision")
                         .HasDefaultValue(0.0);
 
-                    b.Property<string>("Text")
+                    b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -239,8 +236,6 @@ namespace EdgePMO.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
-
-                    b.HasIndex("CourseId1");
 
                     b.HasIndex("UserId");
 
@@ -520,7 +515,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -780,10 +775,6 @@ namespace EdgePMO.API.Migrations
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("EdgePMO.API.Models.Course", null)
-                        .WithMany("Reviews")
-                        .HasForeignKey("CourseId1");
 
                     b.HasOne("EdgePMO.API.Models.User", "User")
                         .WithMany()

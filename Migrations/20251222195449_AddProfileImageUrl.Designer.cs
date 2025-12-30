@@ -87,7 +87,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("MainObjective")
                         .HasColumnType("text");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -230,7 +230,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -240,7 +240,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("double precision")
                         .HasDefaultValue(0.0);
 
-                    b.Property<string>("Text")
+                    b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -536,7 +536,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");

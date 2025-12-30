@@ -42,7 +42,7 @@ namespace EdgePMO.API.Controllers
 
         [HttpPatch("{id:guid}/status")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusDto body)
+        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdatePurchaseStatusDto body)
         {
             if (string.IsNullOrWhiteSpace(body.Status)) return BadRequest(new { message = "status is required" });
             Response resp = await _purchaseServices.UpdateStatusAsync(id, body.Status);

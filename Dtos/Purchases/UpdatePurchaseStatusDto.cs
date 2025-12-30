@@ -1,6 +1,6 @@
 ﻿namespace EdgePMO.API.Dtos
 {
-    public record UpdateStatusDto
+    public record UpdatePurchaseStatusDto
     {
         public string Status { get; init; } = null!;
     }

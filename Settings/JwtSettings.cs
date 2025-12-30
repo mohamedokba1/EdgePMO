@@ -1,4 +1,4 @@
-﻿namespace EdgePMO.API.Dtos
+﻿namespace EdgePMO.API.Settings
 {
     public class JwtSettings
     {

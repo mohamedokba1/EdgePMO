@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    [Migration("20251222204602_AddTitleInInstructor")]
-    partial class AddTitleInInstructor
+    [Migration("20251230061200_FixForiegnKeysIssueOnReviews")]
+    partial class FixForiegnKeysIssueOnReviews
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -87,7 +87,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("MainObjective")
                         .HasColumnType("text");
 
-                    b.Property<string>("Header")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -219,10 +219,12 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<Guid>("CourseId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
-                    b.Property<Guid?>("CourseId1")
+                    b.Property<Guid>("CourseId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -240,10 +242,8 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("double precision")
                         .HasDefaultValue(0.0);
 
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -251,8 +251,6 @@ namespace EdgePMO.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
-
-                    b.HasIndex("CourseId1");
 
                     b.HasIndex("UserId");
 
@@ -535,12 +533,16 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Header")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -548,6 +550,14 @@ namespace EdgePMO.API.Migrations
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -796,14 +806,10 @@ namespace EdgePMO.API.Migrations
             modelBuilder.Entity("EdgePMO.API.Models.CourseReview", b =>
                 {
                     b.HasOne("EdgePMO.API.Models.Course", "Course")
-                        .WithMany("CourseReview")
+                        .WithMany("Reviews")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("EdgePMO.API.Models.Course", null)
-                        .WithMany("Reviews")
-                        .HasForeignKey("CourseId1");
 
                     b.HasOne("EdgePMO.API.Models.User", "User")
                         .WithMany()
@@ -947,8 +953,6 @@ namespace EdgePMO.API.Migrations
                     b.Navigation("Certificates");
 
                     b.Navigation("CourseOutline");
-
-                    b.Navigation("CourseReview");
 
                     b.Navigation("CourseUsers");
 

@@ -1,5 +1,6 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Dtos.Courses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -11,10 +12,12 @@ namespace EdgePMO.API.Controllers
     public class CoursesController : ControllerBase
     {
         private readonly ICourseServices _courseServices;
+        private readonly ICourseReviewServices _courseReviewServices;
 
-        public CoursesController(ICourseServices courseServices)
+        public CoursesController(ICourseServices courseServices, ICourseReviewServices courseReviewServices)
         {
             _courseServices = courseServices;
+            _courseReviewServices = courseReviewServices;
         }
 
         [HttpGet]
@@ -57,7 +60,7 @@ namespace EdgePMO.API.Controllers
 
         [HttpPost]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> Create(CourseCreateDto dto)
+        public async Task<IActionResult> CreateCourse(CourseCreateDto dto)
         {
             Response? created = await _courseServices.CreateAsync(dto);
             return StatusCode((int)created.Code, created);
@@ -65,7 +68,7 @@ namespace EdgePMO.API.Controllers
 
         [HttpPut("{id:guid}")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> Update(Guid id, CourseUpdateDto courseUpdateDto)
+        public async Task<IActionResult> UpdateCourse(Guid id, CourseUpdateDto courseUpdateDto)
         {
             if (id != courseUpdateDto.CourseId)
             {
@@ -83,9 +86,49 @@ namespace EdgePMO.API.Controllers
 
         [HttpDelete("{id:guid}")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> DeleteCourse(Guid id)
         {
             Response? deleteResponse = await _courseServices.DeleteAsync(id);
+            return StatusCode((int)deleteResponse.Code, deleteResponse);
+        }
+
+        [HttpGet("{id:guid}/reviews")]
+        [Authorize]
+        public async Task<IActionResult> GetCourseReviews(Guid id)
+        {
+            Response? resp = await _courseReviewServices.GetByCourseIdAsync(id);
+            return StatusCode((int)resp.Code, resp);
+        }
+
+        [HttpGet("reviews/{id:guid}")]
+        [Authorize]
+        public async Task<IActionResult> GetCourseReviewById(Guid id)
+        {
+            Response? resp = await _courseReviewServices.GetByIdAsync(id);
+            return StatusCode((int)resp.Code, resp);
+        }
+
+        [HttpPost("reviews")]
+        [Authorize]
+        public async Task<IActionResult> CreateCourseReview([FromBody] CreateCourseReviewDto dto)
+        {
+            Response? resp = await _courseReviewServices.CreateAsync(dto);
+            return StatusCode((int)resp.Code, resp);
+        }
+
+        [HttpPut("reviews")]
+        [Authorize]
+        public async Task<IActionResult> UpdateCourseReview([FromBody] UpdateCourseReviewDto dto)
+        {
+            Response? resp = await _courseReviewServices.UpdateAsync(dto);
+            return StatusCode((int)resp.Code, resp);
+        }
+
+        [HttpDelete("reviews/{id:guid}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteCourseReviewById(Guid id)
+        {
+            Response? deleteResponse = await _courseReviewServices.DeleteAsync(id);
             return StatusCode((int)deleteResponse.Code, deleteResponse);
         }
 

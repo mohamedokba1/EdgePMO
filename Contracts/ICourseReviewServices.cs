@@ -1,4 +1,5 @@
 ﻿using EdgePMO.API.Dtos;
+using EdgePMO.API.Dtos.Courses;
 
 namespace EdgePMO.API.Contracts
 {
@@ -6,8 +7,9 @@ namespace EdgePMO.API.Contracts
     {
         Task<Response> GetAllAsync();
         Task<Response> GetByIdAsync(Guid id);
-        Task<Response> CreateAsync(InstructorCreateDto dto);
-        Task<Response> UpdateAsync(InstructorUpdateDto dto);
+        Task<Response> GetByCourseIdAsync(Guid courseId);
+        Task<Response> CreateAsync(CreateCourseReviewDto dto);
+        Task<Response> UpdateAsync(UpdateCourseReviewDto dto);
         Task<Response> DeleteAsync(Guid id);
     }
 }

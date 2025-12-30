@@ -111,7 +111,7 @@ public partial class EdgepmoDbContext : DbContext
             .HasOne(c => c.Course)
             .WithMany(c => c.Certificates)
             .HasForeignKey(c => c.CourseId);
-
+            
         // ===== CourseVideo CONFIGURATION =====
         modelBuilder.Entity<CourseVideo>(entity =>
         {
@@ -244,7 +244,7 @@ public partial class EdgepmoDbContext : DbContext
                 .HasForeignKey(co => co.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasMany(e => e.CourseReview)
+            entity.HasMany(e => e.Reviews)
                 .WithOne(cr => cr.Course)
                 .HasForeignKey(cr => cr.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -293,13 +293,13 @@ public partial class EdgepmoDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
 
-            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.Header).HasMaxLength(200);
             entity.Property(e => e.Rating).HasPrecision(3, 2).HasDefaultValue(0.0);
-            entity.Property(e => e.Text).IsRequired().HasMaxLength(4000);
+            entity.Property(e => e.Content).IsRequired().HasMaxLength(4000);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasOne(e => e.Course)
-                .WithMany(c => c.CourseReview)
+                .WithMany(c => c.Reviews)
                 .HasForeignKey(e => e.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 

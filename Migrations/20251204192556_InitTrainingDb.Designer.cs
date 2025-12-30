@@ -66,7 +66,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("InstructorId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Header")
                         .IsRequired()
                         .HasColumnType("text");
 

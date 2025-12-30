@@ -117,6 +117,14 @@ namespace EdgePMO.API.Settings
                 .ForMember(d => d.Course, o => o.MapFrom(s => s.Course))
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) =>
                     srcMember != null));
+
+            CreateMap<CourseReview, CourseReviewReadDto>()
+               .ForMember(d => d.Id, opt => opt.MapFrom(s => s.Id))
+               .ForMember(d => d.Header, opt => opt.MapFrom(s => s.Header))
+               .ForMember(d => d.Rating, opt => opt.MapFrom(s => s.Rating))
+               .ForMember(d => d.Content, opt => opt.MapFrom(s => s.Content))
+               .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}" ))
+               .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email ));
         }
     }
 }
