@@ -386,5 +386,28 @@ namespace EdgePMO.API.Services
 
             return response;
         }
+
+        public async Task<Response> Deactivate(Guid userId)
+        {
+            Response response = new Response();
+
+            User? findUser = await _context.Users.FindAsync(userId);
+            if (findUser != null)
+            {
+                findUser.IsActive = false;
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "User deactivated successfully!";
+                response.Code = HttpStatusCode.OK;   
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.BadRequest;
+            }
+            return response;
+        }
     }
 }

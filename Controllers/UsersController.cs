@@ -146,5 +146,13 @@ namespace EdgePMO.API.Controllers
             Response resp = await _userServices.GetProfileAsync(currentUserId, currentEmail);
             return StatusCode((int)resp.Code, resp);
         }
+
+        [HttpGet("delete/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeactivateUserByUserId(Guid id)
+        {
+            Response response = await _userServices.Deactivate(id);
+            return StatusCode((int)response.Code, response);
+        }
     }
 }
