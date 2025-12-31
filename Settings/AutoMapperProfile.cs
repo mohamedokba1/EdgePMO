@@ -116,6 +116,8 @@ namespace EdgePMO.API.Settings
             CreateMap<PurchaseRequest, PurchaseRequestResponseDto>()
                 .ForMember(d => d.Template, o => o.MapFrom(s => s.Template))
                 .ForMember(d => d.Course, o => o.MapFrom(s => s.Course))
+                .ForMember(d => d.Username, o => o.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}"))
+                .ForMember(d => d.Email, o => o.MapFrom(s => s.User.Email))
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) =>
                     srcMember != null));
 

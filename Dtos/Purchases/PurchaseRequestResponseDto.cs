@@ -5,14 +5,32 @@ namespace EdgePMO.API.Dtos
     public record PurchaseRequestResponseDto
     {
         public Guid Id { get; init; }
+
         public Guid UserId { get; init; }
+
+        public string Username { get; init; }
+
+        public string Email { get; init; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? TemplateId { get; init; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? CourseId { get; init; }
+
         public string? Notes { get; init; }
+
         public string Status { get; init; } = null!;
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? AdminId { get; init; }
+
         public DateTime RequestedAt { get; init; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DateTime? DecisionAt { get; init; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? IdempotencyKey { get; init; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

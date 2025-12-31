@@ -138,10 +138,20 @@ namespace EdgePMO.API.Services
 
             List<PurchaseRequestResponseDto>? dtoList = list.Select(pr => _mapper.Map<PurchaseRequestResponseDto>(pr)).ToList();
 
+            List<PurchaseRequestResponseDto> templateRequests = dtoList
+                                                                .Where(r => r.Template != null)
+                                                                .OrderByDescending(pr => pr.RequestedAt)
+                                                                .ToList();
+
+            List<PurchaseRequestResponseDto> courseRequests = dtoList
+                                                                .Where(r => r.Course != null)
+                                                                .OrderByDescending(pr => pr.RequestedAt)
+                                                                .ToList();
             response.IsSuccess = true;
             response.Message = "User purchase requests retrieved.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("requests", JsonSerializer.SerializeToNode(dtoList) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("templates", JsonSerializer.SerializeToNode(templateRequests));
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(courseRequests));
             return response;
         }
 
@@ -159,10 +169,21 @@ namespace EdgePMO.API.Services
 
             List<PurchaseRequestResponseDto>? dtoList = list.Select(pr => _mapper.Map<PurchaseRequestResponseDto>(pr)).ToList();
 
+            List<PurchaseRequestResponseDto> templateRequests = dtoList
+                                                                .Where(r => r.Template != null)
+                                                                .OrderByDescending(pr => pr.RequestedAt)
+                                                                .ToList();
+
+            List<PurchaseRequestResponseDto> courseRequests = dtoList
+                                                                .Where(r => r.Course != null)
+                                                                .OrderByDescending(pr => pr.RequestedAt)
+                                                                .ToList();
+
             response.IsSuccess = true;
             response.Message = "Purchase requests retrieved.";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("requests", JsonSerializer.SerializeToNode(dtoList));
+            response.Result.Add("templates", JsonSerializer.SerializeToNode(templateRequests));
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(courseRequests));
             return response;
         }
 
@@ -333,7 +354,6 @@ namespace EdgePMO.API.Services
             response.Code = HttpStatusCode.OK;
             return response;
         }
-
 
         private async Task SendApprovalEmailAsync(User user, PurchaseRequest pr)
         {

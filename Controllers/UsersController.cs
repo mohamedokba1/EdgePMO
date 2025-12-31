@@ -147,7 +147,7 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
-        [HttpGet("delete/{id}")]
+        [HttpGet("delete/{id:guid}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeactivateUserByUserId(Guid id)
         {

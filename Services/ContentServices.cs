@@ -1,7 +1,6 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Settings;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.Json;
@@ -132,33 +131,6 @@ namespace EdgePMO.API.Services
                 return response;
             }
         }
-
-        //public Task<Response> ListAssetsAsync()
-        //{
-        //    Response response = new Response();
-
-        //    string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-        //    string? webRoot = Path.Combine("/var/www/", uploadsRelative);
-
-        //    if (!Directory.Exists(webRoot))
-        //    {
-        //        response.IsSuccess = true;
-        //        response.Message = "No assets found.";
-        //        response.Code = HttpStatusCode.OK;
-        //        response.Result.Add("files", JsonSerializer.SerializeToNode(Array.Empty<string>()) ?? JsonValue.Create(Array.Empty<object>()));
-        //        return Task.FromResult(response);
-        //    }
-
-        //    string[]? files = Directory.EnumerateFiles(webRoot, "*", SearchOption.AllDirectories)
-        //                               .Select(f => $"{Path.GetFileName(f)}")
-        //                               .ToArray();
-
-        //    response.IsSuccess = true;
-        //    response.Message = "Assets retrieved successfully.";
-        //    response.Code = HttpStatusCode.OK;
-        //    response.Result.Add("files", JsonSerializer.SerializeToNode(files) ?? JsonValue.Create(Array.Empty<object>()));
-        //    return Task.FromResult(response);
-        //}
 
         public Task<Response> DeleteAssetAsync(string fileName)
         {
