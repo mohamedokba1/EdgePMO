@@ -128,6 +128,41 @@ namespace EdgePMO.API.Settings
                .ForMember(d => d.Content, opt => opt.MapFrom(s => s.Content))
                .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}" ))
                .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email ));
+
+
+            CreateMap<KnowledgeHub, KnowledgeHubDto>()
+                .ForMember(dest => dest.Sections,
+                    opt => opt.MapFrom(src => src.Sections));
+
+            CreateMap<KnowledgeHubSection, SectionDto>()
+                .ForMember(dest => dest.Blocks,
+                    opt => opt.MapFrom(src => src.Blocks));
+
+            CreateMap<ContentBlock, ContentBlockDto>()
+                .ForMember(dest => dest.Content,
+                    opt => opt.MapFrom(src =>
+                        ContentBlockSerializer.Deserialize(src.Content, src.Type)));
+
+            // Reverse mappings (if needed for creating)
+            CreateMap<CreateKnowledgeHubDto, KnowledgeHub>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Sections, opt => opt.Ignore());
+
+            CreateMap<CreateSectionDto, KnowledgeHubSection>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.KnowledgeHubId, opt => opt.Ignore())       
+                .ForMember(dest => dest.KnowledgeHub, opt => opt.Ignore())
+                .ForMember(dest => dest.Blocks, opt => opt.Ignore());
+
+            CreateMap<CreateContentBlockDto, ContentBlock>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.SectionId, opt => opt.Ignore())
+                .ForMember(dest => dest.Content,
+                    opt => opt.MapFrom(src => ContentBlockSerializer.Serialize(src.Content)))
+                
+                .ForMember(dest => dest.Section, opt => opt.Ignore());
         }
     }
 }

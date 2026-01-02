@@ -7,7 +7,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> CreateAsync(CreateKnowledgeHubDto dto);
         Task<Response> GetByIdAsync(Guid id);
         Task<Response> GetAllAsync(int pageNumber = 1, int pageSize = 10);
-        Task<Response> UpdateAsync(Guid id, UpdateKnowledgeHubDto dto);
+        Task<Response> UpdateAsync(UpdateKnowledgeHubDto dto);
         Task<Response> DeleteAsync(Guid id);
     }
 }

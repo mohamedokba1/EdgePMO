@@ -12,12 +12,6 @@ namespace EdgePMO.API.Dtos
 
         public string Email { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Guid? TemplateId { get; init; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Guid? CourseId { get; init; }
-
         public string? Notes { get; init; }
 
         public string Status { get; init; } = null!;

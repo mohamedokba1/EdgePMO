@@ -2,6 +2,7 @@
 using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Models;
+using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
@@ -23,6 +24,12 @@ namespace EdgePMO.API.Services
         public async Task<Response> CreateAsync(CreateKnowledgeHubDto dto)
         {
             Response response = new();
+
+            if(dto.PublishDate.Kind == DateTimeKind.Unspecified)
+            {
+                dto.PublishDate = DateTime.SpecifyKind(dto.PublishDate, DateTimeKind.Utc);
+            }
+
             KnowledgeHub? knowledgeHub = new KnowledgeHub
             {
                 Title = dto.Title,
@@ -30,9 +37,7 @@ namespace EdgePMO.API.Services
                 Author = dto.Author,
                 PublishDate = dto.PublishDate,
                 CoverImageUrl = dto.CoverImageUrl,
-                DocumentUrl = dto.DocumentUrl,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                DocumentUrl = dto.DocumentUrl
             };
 
             if (dto.Sections?.Any() == true)
@@ -42,19 +47,18 @@ namespace EdgePMO.API.Services
                     KnowledgeHubSection? section = new KnowledgeHubSection
                     {
                         Heading = sectionDto.Heading,
-                        Order = sectionDto.Order
+                        Order = sectionDto.Order              
                     };
 
                     if (sectionDto.Blocks?.Any() == true)
                     {
                         foreach (CreateContentBlockDto blockDto in sectionDto.Blocks.OrderBy(b => b.Order))
                         {
-                            section.Blocks.Add(new ContentBlock
-                            {
-                                Type = blockDto.Type,
-                                Content = blockDto.Content,
-                                Order = blockDto.Order
-                            });
+                            ContentBlock newContentBlock = new ContentBlock();
+                            newContentBlock.Type = blockDto.Type;
+                            newContentBlock.Order = blockDto.Order;
+                            newContentBlock.Content = ContentBlockSerializer.Serialize(blockDto.Content);
+                            section.Blocks.Add(newContentBlock);
                         }
                     }
 
@@ -93,8 +97,8 @@ namespace EdgePMO.API.Services
             if (knowledgeHub == null)
             {
                 response.IsSuccess = false;
-                response.Message = "Knowledge Hub article not found";
-                response.Code = HttpStatusCode.NotFound;
+                response.Message = $"Knowledge Hub article with id = {id} not found";
+                response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
 
@@ -134,13 +138,13 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> UpdateAsync(Guid id, UpdateKnowledgeHubDto dto)
+        public async Task<Response> UpdateAsync(UpdateKnowledgeHubDto dto)
         {
             Response response = new();
             KnowledgeHub? knowledgeHub = await _context.KnowledgeHubs
                                                 .Include(k => k.Sections)
                                                 .ThenInclude(s => s.Blocks)
-                                                .FirstOrDefaultAsync(k => k.Id == id);
+                                                .FirstOrDefaultAsync(k => k.Id == dto.Id);
 
             if (knowledgeHub == null)
             {
@@ -150,21 +154,25 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            if (dto.PublishDate.HasValue)
+            {
+                dto.PublishDate = DateTime.SpecifyKind(dto.PublishDate.Value, DateTimeKind.Utc);
+                knowledgeHub.PublishDate = dto.PublishDate.Value;
+            }
             knowledgeHub.Title = !string.IsNullOrEmpty(dto.Title) ? dto.Title : knowledgeHub.Title;
             knowledgeHub.Excerpt = !string.IsNullOrEmpty(dto.Excerpt) ? dto.Excerpt : knowledgeHub.Excerpt;
             knowledgeHub.Author = !string.IsNullOrEmpty(dto.Author) ? dto.Author : knowledgeHub.Author;
-            knowledgeHub.PublishDate = dto.PublishDate.HasValue ? dto.PublishDate.Value : knowledgeHub.PublishDate;
             knowledgeHub.CoverImageUrl = !string.IsNullOrEmpty(dto.CoverImageUrl) ? dto.CoverImageUrl : knowledgeHub.CoverImageUrl;
             knowledgeHub.DocumentUrl = !string.IsNullOrEmpty(dto.DocumentUrl) ? dto.DocumentUrl : knowledgeHub.DocumentUrl;
             knowledgeHub.IsActive = dto.IsActive.HasValue ? dto.IsActive.Value : knowledgeHub.IsActive;
             knowledgeHub.UpdatedAt = DateTime.UtcNow;
 
-            // Remove old sections
-            _context.KnowledgeHubSections.RemoveRange(knowledgeHub.Sections);
-
             // Add new sections
             if (dto.Sections?.Any() == true)
             {
+                // Remove old sections
+                _context.KnowledgeHubSections.RemoveRange(knowledgeHub.Sections);
+
                 foreach (CreateSectionDto sectionDto in dto.Sections.OrderBy(s => s.Order))
                 {
                     KnowledgeHubSection? section = new KnowledgeHubSection
@@ -177,12 +185,11 @@ namespace EdgePMO.API.Services
                     {
                         foreach (CreateContentBlockDto blockDto in sectionDto.Blocks.OrderBy(b => b.Order))
                         {
-                            section.Blocks.Add(new ContentBlock
-                            {
-                                Type = blockDto.Type,
-                                Content = blockDto.Content,
-                                Order = blockDto.Order
-                            });
+                            ContentBlock newContentBlock = new ContentBlock();
+                            newContentBlock.Type = blockDto.Type;
+                            newContentBlock.Order = blockDto.Order;
+                            newContentBlock.Content = ContentBlockSerializer.Serialize(blockDto.Content);
+                            section.Blocks.Add(newContentBlock);
                         }
                     }
 
@@ -238,5 +245,6 @@ namespace EdgePMO.API.Services
             }
             return response;
         }
+
     }
 }

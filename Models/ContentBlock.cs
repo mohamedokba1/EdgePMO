@@ -8,7 +8,5 @@
         public string Type { get; set; } = null!;
         public string Content { get; set; } = null!;
         public int Order { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

@@ -463,7 +463,6 @@ public partial class EdgepmoDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Heading).IsRequired().HasMaxLength(300);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasMany(e => e.Blocks)
                 .WithOne(b => b.Section)
@@ -477,7 +476,6 @@ public partial class EdgepmoDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Content).IsRequired();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         OnModelCreatingPartial(modelBuilder);

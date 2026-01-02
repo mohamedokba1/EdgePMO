@@ -17,7 +17,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Create([FromBody] CreateKnowledgeHubDto dto)
         {
             Response? response = await _service.CreateAsync(dto);
@@ -34,23 +34,23 @@ namespace EdgePMO.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var response = await _service.GetAllAsync(pageNumber, pageSize);
+            Response? response = await _service.GetAllAsync(pageNumber, pageSize);
             return StatusCode((int)response.Code, response);
         }
 
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateKnowledgeHubDto dto)
+        [HttpPatch]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> Update([FromBody] UpdateKnowledgeHubDto dto)
         {
-            var response = await _service.UpdateAsync(id, dto);
+            Response? response = await _service.UpdateAsync(dto);
             return StatusCode((int)response.Code, response);
         }
 
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id:guid}")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var response = await _service.DeleteAsync(id);
+            Response? response = await _service.DeleteAsync(id);
             return StatusCode((int)response.Code, response);
         }
     }
