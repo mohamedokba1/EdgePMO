@@ -103,6 +103,7 @@ namespace EdgePMO.API.Services
             }
 
             response.IsSuccess = true;
+            response.Message = "knowledge article retrieved successfully!";
             response.Result.Add("content", JsonSerializer.SerializeToNode(_mapper.Map<KnowledgeHubDto>(knowledgeHub)) ?? JsonValue.Create(new JsonObject()));
             response.Code = HttpStatusCode.OK;
 
@@ -129,6 +130,7 @@ namespace EdgePMO.API.Services
             List<KnowledgeHubDto>? dtos = _mapper.Map<List<KnowledgeHubDto>>(articles);
 
             response.IsSuccess = true;
+            response.Message = "All knowledge articles retrieved successfully!";
             response.Result.Add("pageNo", pageNumber);
             response.Result.Add("pageSize", pageSize);
             response.Result.Add("totalCount", totalCount);
@@ -224,7 +226,7 @@ namespace EdgePMO.API.Services
             {
                 response.IsSuccess = false;
                 response.Message = "Knowledge Hub article not found";
-                response.Code = HttpStatusCode.NotFound;
+                response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
 
