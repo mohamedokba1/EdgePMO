@@ -1,13 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Text.Json.Serialization;
 
 namespace EdgePMO.API.Dtos
 {
     public class UserProfileDto
     {
-        [Required]
-        public Guid Id { get; init; }
+        [JsonPropertyName("user")]
+        public UserReadDto User { get; set; }
 
-        [EmailAddress]
-        public string Email { get; set; }
+        [JsonPropertyName("courses")]
+        public IEnumerable<CourseReadDto> Courses { get; set; }
+
+        [JsonPropertyName("templates")]
+        public IEnumerable<UserTemplateReadDto> Templates { get; set; }
     }
 }
