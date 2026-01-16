@@ -8,7 +8,6 @@ namespace EdgePMO.API.Controllers
 {
     [Route("api/v1.0/[controller]")]
     [ApiController]
-    [Authorize(Policy = "Admin")]
     public class DashboardController : ControllerBase
     {
         private readonly IPageContentServices _pageServices;
@@ -40,6 +39,7 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPost("pages")]
         public async Task<IActionResult> Create([FromBody] PageContentCreateDto dto)
         {
@@ -47,6 +47,7 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpPatch("pages")]
         public async Task<IActionResult> Update([FromBody] PageContentUpdateDto dto)
         {
@@ -54,6 +55,7 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
+        [Authorize(Policy = "Admin")]
         [HttpDelete("pages/{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
