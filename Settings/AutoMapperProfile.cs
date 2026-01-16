@@ -2,6 +2,8 @@
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Dtos.Courses;
 using EdgePMO.API.Models;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace EdgePMO.API.Settings
 {
@@ -63,7 +65,7 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.DocumentUrl));
-            
+
             CreateMap<UserTemplate, UserTemplateReadDto>()
                     .ForMember(d => d.TemplateId, opt => opt.MapFrom(s => s.Template.Id))
                     .ForMember(d => d.Name, opt => opt.MapFrom(s => s.Template.Name))
@@ -95,7 +97,7 @@ namespace EdgePMO.API.Settings
                 .ForMember(d => d.Id, opt => opt.MapFrom(s => s.Id))
                 .ForMember(d => d.CoverImageUrl, opt => opt.MapFrom(s => s.CoverImageUrl))
                 .ForMember(d => d.UsersPurchased, opt => opt.MapFrom(s => s.UserTemplates));
-       
+
             CreateMap<Template, TemplateBriefDto>()
                 .ForMember(d => d.Id, o => o.MapFrom(s => s.Id))
                 .ForMember(d => d.Name, o => o.MapFrom(s => s.Name))
@@ -126,8 +128,8 @@ namespace EdgePMO.API.Settings
                .ForMember(d => d.Header, opt => opt.MapFrom(s => s.Header))
                .ForMember(d => d.Rating, opt => opt.MapFrom(s => s.Rating))
                .ForMember(d => d.Content, opt => opt.MapFrom(s => s.Content))
-               .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}" ))
-               .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email ));
+               .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}"))
+               .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email));
 
 
             CreateMap<KnowledgeHub, KnowledgeHubDto>()
@@ -152,7 +154,7 @@ namespace EdgePMO.API.Settings
 
             CreateMap<CreateSectionDto, KnowledgeHubSection>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.KnowledgeHubId, opt => opt.Ignore())       
+                .ForMember(dest => dest.KnowledgeHubId, opt => opt.Ignore())
                 .ForMember(dest => dest.KnowledgeHub, opt => opt.Ignore())
                 .ForMember(dest => dest.Blocks, opt => opt.Ignore());
 
@@ -161,9 +163,21 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.SectionId, opt => opt.Ignore())
                 .ForMember(dest => dest.Content,
                     opt => opt.MapFrom(src => ContentBlockSerializer.Serialize(src.Content)))
-                
                 .ForMember(dest => dest.Section, opt => opt.Ignore());
+
+            CreateMap<PageContent, PageContentReadDto>()
+            .ForMember(
+                d => d.Data,
+                o => o.MapFrom(s =>
+                    JsonSerializer.Deserialize<JsonElement>(
+                        s.Data,
+                        (JsonSerializerOptions?)null
+                    )
+                )
+            );
+
         }
+
     }
 }
 
