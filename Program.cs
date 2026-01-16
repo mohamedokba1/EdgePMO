@@ -208,22 +208,23 @@ public class Program
             });
         });
 
-        // Configure large file uploads (3 GB)
         builder.Services.Configure<FormOptions>(options =>
         {
             options.ValueLengthLimit = int.MaxValue;
-            options.MultipartBodyLengthLimit = 3L * 1024 * 1024 * 1024; // 3 GB
-            options.MemoryBufferThreshold = 1024 * 1024; // 1 MB before writing to disk
+            options.MultipartBodyLengthLimit = 3L * 1024 * 1024 * 1024;
+            options.MemoryBufferThreshold = 1024 * 1024; // 1MB
         });
 
-        // Configure Kestrel server limits
-        builder.WebHost.ConfigureKestrel((context, options) =>
+        builder.WebHost.ConfigureKestrel(options =>
         {
             options.AllowSynchronousIO = false;
-            options.Limits.MaxRequestBodySize = 3L * 1024 * 1024 * 1024; // 3 GB
-            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(12);
-            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(1);
-            options.Limits.Http2.MaxFrameSize = 1024 * 1024; // 1 MB frame size
+            options.Limits.MaxRequestBodySize = null;
+            options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(15);
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10);
+            options.Limits.MinRequestBodyDataRate =
+                new Microsoft.AspNetCore.Server.Kestrel.Core.MinDataRate(
+                    bytesPerSecond: 240,
+                    gracePeriod: TimeSpan.FromSeconds(30));
         });
 
 
