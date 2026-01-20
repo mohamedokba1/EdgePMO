@@ -33,6 +33,7 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<KnowledgeHubSection> KnowledgeHubSections { get; set; }
     public DbSet<ContentBlock> ContentBlocks { get; set; }
     public DbSet<PageContent> PageContents { get; set; }
+    public DbSet<MediaFile> MediaFiles { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

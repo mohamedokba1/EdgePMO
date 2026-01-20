@@ -11,63 +11,13 @@ namespace EdgePMO.API.Services
 {
     public class CourseContentServices : ICourseContentServices
     {
-        private readonly EdgepmoDbContext _context;
         private readonly IContentServices _contentServices;
+        private readonly EdgepmoDbContext _context;
 
         public CourseContentServices(EdgepmoDbContext context, IContentServices contentServices)
         {
             _context = context;
             _contentServices = contentServices;
-        }
-
-        public async Task<Response> GetByCourseIdAsync(Guid courseId)
-        {
-            Response response = new Response();
-
-            Course? course = await _context.Courses
-                .AsNoTracking()
-                .Include(c => c.CourseOutline)
-                .FirstOrDefaultAsync(c => c.CourseId == courseId);
-
-            if (course == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Course not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            //List<CourseVideo>? videos = course.CourseOutline.OrderBy(v => v.Order).ToList();
-
-
-            response.IsSuccess = true;
-            response.Message = "Videos retrieved.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("videos", JsonSerializer.SerializeToNode(course) ?? JsonValue.Create(Array.Empty<object>()));
-            return response;
-        }
-
-        public async Task<Response> GetByIdAsync(Guid id)
-        {
-            Response response = new Response();
-
-            var video = await _context.CourseVideos
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == id);
-
-            if (video == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Video not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            response.IsSuccess = true;
-            response.Message = "Video retrieved.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("video", JsonSerializer.SerializeToNode(video) ?? JsonValue.Create(new { }));
-            return response;
         }
 
         public async Task<Response> CreateAsync(CourseVideoCreateDto dto)
@@ -82,13 +32,21 @@ namespace EdgePMO.API.Services
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
+            MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.Url);
+            if (mediaFile == null || mediaFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Uploaded file not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
 
             CourseVideo? video = new CourseVideo
             {
                 //CourseId = dto.CourseId,
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
-                Url = dto.Url?.Trim(),
+                Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim(),
                 DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order
             };
@@ -103,85 +61,51 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> UpdateAsync(Guid id, CourseVideoCreateDto dto)
+        public async Task<Response> CreateCourseDocuemnt(CourseDocumentCreateDto dto, Guid outlineId)
         {
             Response response = new Response();
 
-            CourseVideo? existing = await _context.CourseVideos.FindAsync(id);
-            if (existing == null)
+            CourseOutline? outline = await _context.CourseOutlines.FindAsync(outlineId);
+            if (outline == null)
             {
                 response.IsSuccess = false;
-                response.Message = "Video not found.";
+                response.Message = "Outline section not found.";
                 response.Code = HttpStatusCode.NotFound;
                 return response;
             }
-
-            // validate course if changed
-            //if (existing.CourseId != dto.CourseId)
-            //{
-            //    Course? course = await _context.Courses.FindAsync(dto.CourseId);
-            //    if (course == null)
-            //    {
-            //        response.IsSuccess = false;
-            //        response.Message = "Target course not found.";
-            //        response.Code = HttpStatusCode.BadRequest;
-            //        return response;
-            //    }
-            //}
-
-            //existing.CourseId = dto.CourseId;
-            existing.Title = dto.Title?.Trim();
-            existing.Description = dto.Description?.Trim();
-            existing.Url = dto.Url?.Trim();
-            existing.DurationMinutes = dto.DurationSeconds;
-            existing.Order = dto.Order;
-
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Course video updated.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("courseVideo", JsonSerializer.SerializeToNode(existing) ?? JsonValue.Create(new { }));
-            return response;
-        }
-
-        public async Task<Response> DeleteAsync(Guid id, bool deleteFile = false)
-        {
-            Response response = new Response();
-
-            CourseVideo? existing = await _context.CourseVideos.FindAsync(id);
-            if (existing == null)
+            MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.Url);
+            if (mediaFile == null || mediaFile.FilePath == null)
             {
                 response.IsSuccess = false;
-                response.Message = "Video not found.";
-                response.Code = HttpStatusCode.NotFound;
+                response.Message = "Uploaded file not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+            string fileName = Path.GetFileName(mediaFile.FilePath ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid file path.";
+                response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
 
-            string? videoUrl = existing.Url;
+            CourseDocument? doc = new CourseDocument
+            {
+                CourseOutlineId = outlineId,
+                Title = dto.Title,
+                Description = dto.Description,
+                DocumentUrl = mediaFile.FilePath?.Replace("\\", "/"),
+                CreatedAt = DateTime.UtcNow
+            };
 
-            _context.CourseVideos.Remove(existing);
+            _context.CourseDocuments.Add(doc);
             await _context.SaveChangesAsync();
 
-            if (deleteFile && !string.IsNullOrWhiteSpace(videoUrl))
-            {
-                try
-                {
-                    string fileName = Path.GetFileName(videoUrl);
-                    if (!string.IsNullOrWhiteSpace(fileName))
-                    {
-                        await _contentServices.DeleteAssetAsync(fileName);
-                    }
-                }
-                catch
-                {
-                    // ignore deletion errors; record is already removed
-                }
-            }
-
             response.IsSuccess = true;
-            response.Message = "Course video deleted.";
-            response.Code = HttpStatusCode.NoContent;
+            response.Message = "Course document created under outline.";
+            response.Code = HttpStatusCode.Created;
+            //response.Result.Add("document", JsonSerializer.SerializeToNode(doc) ?? JsonValue.Create(new { }));
             return response;
         }
 
@@ -217,34 +141,6 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetCourseOutlinesByCourseId(Guid courseId)
-        {
-            Response response = new Response();
-
-            bool exists = await _context.Courses.AnyAsync(c => c.CourseId == courseId);
-            if (!exists)
-            {
-                response.IsSuccess = false;
-                response.Message = "Course not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            List<CourseOutline>? outlines = await _context.CourseOutlines
-                .AsNoTracking()
-                .Where(o => o.CourseId == courseId)
-                .Include(o => o.Videos)
-                .Include(o => o.Documents)
-                .OrderBy(o => o.Order)
-                .ToListAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Course outlines retrieved.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("outlines", JsonSerializer.SerializeToNode(outlines) ?? JsonValue.Create(Array.Empty<object>()));
-            return response;
-        }
-
         public async Task<Response> CreateCourseVideo(CourseVideoCreateDto dto, Guid outlineId)
         {
             Response response = new Response();
@@ -258,7 +154,16 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            string fileName = Path.GetFileName(dto.Url ?? string.Empty);
+            MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.Url);
+            if (mediaFile == null || mediaFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Uploaded file not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            string fileName = Path.GetFileName(mediaFile.FilePath ?? string.Empty);
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 response.IsSuccess = false;
@@ -276,21 +181,12 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            //bool exists = await _contentServices.FileExistsAsync(fileName);
-            //if (!exists)
-            //{
-            //    response.IsSuccess = false;
-            //    response.Message = "Uploaded file not found.";
-            //    response.Code = HttpStatusCode.BadRequest;
-            //    return response;
-            //}
-
             CourseVideo? video = new CourseVideo
             {
                 CourseOutlineId = outlineId,
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
-                Url = dto.Url?.Replace("\\", "/"),
+                Url = mediaFile.FilePath?.Replace("\\", "/"),
                 DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order
             };
@@ -298,66 +194,13 @@ namespace EdgePMO.API.Services
             _context.CourseVideos.Add(video);
             await _context.SaveChangesAsync();
 
-            //var videoDto = _mapper.Map<CourseVideoReadDto>(video);
             response.IsSuccess = true;
             response.Message = "Course video created under outline.";
             response.Code = HttpStatusCode.Created;
-            //response.Result.Add("courseVideo", JsonSerializer.SerializeToNode(video) ?? JsonValue.Create(new { }));
             return response;
         }
 
-        public async Task<Response> CreateCourseDocuemnt(CourseDocumentCreateDto dto, Guid outlineId)
-        {
-            Response response = new Response();
-
-            CourseOutline? outline = await _context.CourseOutlines.FindAsync(outlineId);
-            if (outline == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Outline section not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            string fileName = Path.GetFileName(dto.Url ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                response.IsSuccess = false;
-                response.Message = "Invalid file path.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            //bool exists = await _contentServices.FileExistsAsync(fileName);
-            //if (!exists)
-            //{
-            //    response.IsSuccess = false;
-            //    response.Message = "Uploaded file not found.";
-            //    response.Code = HttpStatusCode.BadRequest;
-            //    return response;
-            //}
-
-            CourseDocument? doc = new CourseDocument
-            {
-                CourseOutlineId = outlineId,
-                Title = dto.Title,
-                Description = dto.Description,
-                DocumentUrl = dto.Url,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.CourseDocuments.Add(doc);
-            await _context.SaveChangesAsync();
-
-
-            response.IsSuccess = true;
-            response.Message = "Course document created under outline.";
-            response.Code = HttpStatusCode.Created;
-            //response.Result.Add("document", JsonSerializer.SerializeToNode(doc) ?? JsonValue.Create(new { }));
-            return response;
-        }
-
-        public async Task<Response> DeleteCourseVideo(Guid id, bool deleteFile = false)
+        public async Task<Response> DeleteAsync(Guid id, bool deleteFile = false)
         {
             Response response = new Response();
 
@@ -434,6 +277,158 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Course document deleted.";
             response.Code = HttpStatusCode.NoContent;
+            return response;
+        }
+
+        public async Task<Response> DeleteCourseVideo(Guid id, bool deleteFile = false)
+        {
+            Response response = new Response();
+
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(id);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Video not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            string? videoUrl = existing.Url;
+
+            _context.CourseVideos.Remove(existing);
+            await _context.SaveChangesAsync();
+
+            if (deleteFile && !string.IsNullOrWhiteSpace(videoUrl))
+            {
+                try
+                {
+                    string fileName = Path.GetFileName(videoUrl);
+                    if (!string.IsNullOrWhiteSpace(fileName))
+                    {
+                        await _contentServices.DeleteAssetAsync(fileName);
+                    }
+                }
+                catch
+                {
+                    // ignore deletion errors; record is already removed
+                }
+            }
+
+            response.IsSuccess = true;
+            response.Message = "Course video deleted.";
+            response.Code = HttpStatusCode.NoContent;
+            return response;
+        }
+
+        public async Task<Response> GetByCourseIdAsync(Guid courseId)
+        {
+            Response response = new Response();
+
+            Course? course = await _context.Courses
+                .AsNoTracking()
+                .Include(c => c.CourseOutline)
+                .FirstOrDefaultAsync(c => c.CourseId == courseId);
+
+            if (course == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            response.IsSuccess = true;
+            response.Message = "Videos retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("videos", JsonSerializer.SerializeToNode(course) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> GetByIdAsync(Guid id)
+        {
+            Response response = new Response();
+
+            var video = await _context.CourseVideos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (video == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Video not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            response.IsSuccess = true;
+            response.Message = "Video retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("video", JsonSerializer.SerializeToNode(video) ?? JsonValue.Create(new { }));
+            return response;
+        }
+
+        public async Task<Response> GetCourseOutlinesByCourseId(Guid courseId)
+        {
+            Response response = new Response();
+
+            bool exists = await _context.Courses.AnyAsync(c => c.CourseId == courseId);
+            if (!exists)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            List<CourseOutline>? outlines = await _context.CourseOutlines
+                .AsNoTracking()
+                .Where(o => o.CourseId == courseId)
+                .Include(o => o.Videos)
+                .Include(o => o.Documents)
+                .OrderBy(o => o.Order)
+                .ToListAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course outlines retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("outlines", JsonSerializer.SerializeToNode(outlines) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> UpdateAsync(Guid id, CourseVideoCreateDto dto)
+        {
+            Response response = new Response();
+
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(id);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Video not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.Url);
+            if (mediaFile == null || mediaFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Uploaded file not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            existing.Title = dto.Title?.Trim();
+            existing.Description = dto.Description?.Trim();
+            existing.Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+            existing.DurationMinutes = dto.DurationSeconds;
+            existing.Order = dto.Order;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course video updated.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("courseVideo", JsonSerializer.SerializeToNode(existing) ?? JsonValue.Create(new { }));
             return response;
         }
     }

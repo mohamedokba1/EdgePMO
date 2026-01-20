@@ -5,6 +5,7 @@ namespace EdgePMO.API.Contracts
     public interface IContentServices
     {
         Task<Response> UploadMediaAsync(IFormFile file, string? relativePath);
+        Task<Response> UploadMediaStreamAsync(HttpRequest request, string fileName);
         Task<Response> ListAssetsAsync();
         Task<Response> ListCoursesAssetsAsync();
         Task<Response> DeleteAssetAsync(string fileName);

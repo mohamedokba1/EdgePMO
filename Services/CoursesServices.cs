@@ -13,8 +13,8 @@ namespace EdgePMO.API.Services
 {
     public class CoursesServices : ICourseServices
     {
-        private readonly EdgepmoDbContext _context;
         private readonly IContentServices _contentServices;
+        private readonly EdgepmoDbContext _context;
         private readonly ICourseContentServices _courseContentServices;
         private readonly IMapper _mapper;
 
@@ -24,260 +24,6 @@ namespace EdgePMO.API.Services
             _contentServices = contentServices;
             _mapper = mapper;
             _courseContentServices = courseContentServices;
-        }
-
-        public async Task<Response> GetAllAsync()
-        {
-            Response response = new Response();
-
-            List<Course>? courses = await _context.Courses
-                .AsNoTracking()
-                .Include(c => c.Instructor)
-                .Include(c => c.Testimonials)
-                .Include(c => c.Certificates)
-                .Include(c => c.Reviews)
-                    .ThenInclude(cr => cr.User)
-                .Include(c => c.CourseOutline)
-                    .ThenInclude(co => co.Videos)
-                 .Include(c => c.CourseOutline)
-                    .ThenInclude(co => co.Documents)
-                .Include(c => c.CourseUsers)
-                    .ThenInclude(cu => cu.User)
-                .ToListAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Courses retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("courses", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<CourseReadDto>>(courses)) ?? JsonValue.Create(Array.Empty<object>()));
-            return response;
-        }
-
-        public async Task<Response> GetByIdAsync(Guid id)
-        {
-            Response response = new Response();
-
-            Course? course = await _context.Courses
-                .AsNoTracking()
-                .Include(c => c.Instructor)
-                .Include(c => c.Testimonials)
-                .Include(c => c.Certificates)
-                .Include(c => c.Reviews)
-                    .ThenInclude(cr => cr.User)
-                .Include(c => c.CourseOutline)
-                    .ThenInclude(co => co.Videos)
-                 .Include(c => c.CourseOutline)
-                    .ThenInclude(co => co.Documents)
-                .Include(c => c.CourseUsers)
-                    .ThenInclude(cu => cu.User)
-                .FirstOrDefaultAsync(c => c.CourseId == id);
-
-            if (course == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Course not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            CourseReadDto? dto = _mapper.Map<CourseReadDto>(course);
-
-            response.IsSuccess = true;
-            response.Message = "Course retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("course", JsonSerializer.SerializeToNode(dto) ?? JsonValue.Create(new { }));
-            return response;
-        }
-
-        public async Task<Response> CreateAsync(CourseCreateDto dto)
-        {
-            Response response = new Response();
-
-            bool instructorExists = await _context.Instructors.AnyAsync(i => i.InstructorId == dto.InstructorId);
-            if (!instructorExists)
-            {
-                response.IsSuccess = false;
-                response.Message = "Instructor not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-            Course? course = new Course
-            {
-                CourseId = Guid.NewGuid(),
-                Name = dto.Name,
-                Description = dto.Description,
-                Subtitle = dto.Subtitle,
-                CoursePictureUrl = dto.CoursePictureUrl,
-                MainObjective = dto.MainObjective,
-                Overview = dto.Overview,
-                WhatStudentsLearn = dto.WhatStudentsLearn,
-                SoftwareUsed = dto.SoftwareRequirements,
-                Requirements = dto.Requirements,
-                WhoShouldAttend = dto.WhoShouldAttend,
-                Level = dto.Level,
-                Sessions = dto.Sessions,
-                Category = dto.Category,
-                Certification = dto.HasCertificate,
-                Duration = dto.Duration?.ToString() ?? null,
-                InstructorId = dto.InstructorId,
-                Price = dto.Price,
-                IsActive = true,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.Courses.Add(course);
-            await _context.SaveChangesAsync();
-
-            foreach(CourseContentDto? contentDto in dto.Content)
-            {
-                Response createOutlineResponse = await _courseContentServices.CreateCourseOutline(contentDto, course.CourseId);
-                
-                if(!createOutlineResponse.IsSuccess)
-                {
-                    return createOutlineResponse;
-                }
-                var testId = createOutlineResponse.Result["outlineId"].ToString();
-                Guid outlineId = testId.ToGuidOrDefault(Guid.Empty);
-
-                if (outlineId.Equals(Guid.Empty))
-                {
-                    await DeleteAsync(course.CourseId);
-                    response.IsSuccess = false;
-                    response.Message = "Failed to create course outline.";
-                    response.Code = HttpStatusCode.InternalServerError;
-                    return response;
-                }
-
-                foreach (CourseVideoCreateDto courseCreateDto in contentDto.Videos)
-                {
-                    Response attachVideoResponse = await _courseContentServices.CreateCourseVideo(courseCreateDto, outlineId);
-                    if(!attachVideoResponse.IsSuccess)
-                    {
-                        return attachVideoResponse;
-                    }
-                }
-
-                foreach (CourseDocumentCreateDto courseDocumentDto in contentDto.Documents)
-                {
-                    Response attachDocumentResponse = await _courseContentServices.CreateCourseDocuemnt(courseDocumentDto, outlineId);
-                    if (!attachDocumentResponse.IsSuccess)
-                    {
-                        return attachDocumentResponse;
-                    }
-                }
-            }
-            
-
-            Response? courseResponse = await GetByIdAsync(course.CourseId);
-            response.IsSuccess = true;
-            response.Message = "Course created successfully.";
-            response.Code = HttpStatusCode.Created;
-            response.Result = courseResponse.Result;
-            return response;
-        }
-
-        public async Task<Response> UpdateAsync(CourseUpdateDto dto)
-        {
-            Response response = new Response();
-            Course? existing = await _context.Courses.FindAsync(dto.CourseId);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Course not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Name))
-                existing.Name = dto.Name;
-
-            if (!string.IsNullOrWhiteSpace(dto.Description))
-                existing.Description = dto.Description;
-
-            if (dto.Price.HasValue)
-                existing.Price = dto.Price.Value;
-
-            if (!string.IsNullOrEmpty(dto.Duration))
-                existing.Duration = dto.Duration;
-
-            if (dto.IsActive.HasValue)
-                existing.IsActive = dto.IsActive.Value;
-
-            if (!string.IsNullOrWhiteSpace(dto.CoursePictureUrl))
-                existing.CoursePictureUrl = dto.CoursePictureUrl;
-
-            if (!string.IsNullOrWhiteSpace(dto.Overview))
-                existing.Overview = dto.Overview;
-
-            if (!string.IsNullOrWhiteSpace(dto.Subtitle))
-                existing.Subtitle = dto.Subtitle;
-
-            if (!string.IsNullOrWhiteSpace(dto.MainObjective))
-                existing.MainObjective = dto.MainObjective;
-
-            if (dto.Sessions.HasValue)
-                existing.Sessions = dto.Sessions.Value;
-
-            if (!string.IsNullOrWhiteSpace(dto.Level))
-                existing.Level = dto.Level;
-
-            if (dto.Rating.HasValue)
-                existing.Rating = dto.Rating.Value;
-
-            if (dto.Students.HasValue)
-                existing.Students = dto.Students.Value;
-
-            if (dto.InstructorId.HasValue)
-                existing.InstructorId = dto.InstructorId.Value;
-
-            if (!string.IsNullOrWhiteSpace(dto.Category))
-                existing.Category = dto.Category;
-
-            if (dto.Certification.HasValue)
-                existing.Certification = dto.Certification.Value;
-
-            if (dto.SoftwareUsed != null && dto.SoftwareUsed.Count > 0)
-                existing.SoftwareUsed = dto.SoftwareUsed;
-
-            if (dto.WhatStudentsLearn != null && dto.WhatStudentsLearn.Count > 0)
-                existing.WhatStudentsLearn = dto.WhatStudentsLearn;
-
-            if (dto.WhoShouldAttend != null && dto.WhoShouldAttend.Count > 0)
-                existing.WhoShouldAttend = dto.WhoShouldAttend;
-
-            if (dto.Requirements != null && dto.Requirements.Count > 0)
-                existing.Requirements = dto.Requirements;
-
-            existing.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            Response updatedCourse = await GetByIdAsync(existing.CourseId);
-            response.IsSuccess = true;
-            response.Message = "Course updated successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result = updatedCourse.Result;
-            return response;
-        }
-
-        public async Task<Response> DeleteAsync(Guid id)
-        {
-            Response response = new Response();
-            Course? existing = await _context.Courses.FindAsync(id);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Course not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            _context.Courses.Remove(existing);
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Course deleted successfully.";
-            response.Code = HttpStatusCode.NoContent;
-            return response;
         }
 
         public async Task<Response> AttachCourseVideoAsync(CourseVideoCreateDto dto)
@@ -292,8 +38,16 @@ namespace EdgePMO.API.Services
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
+            MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.Url);
+            if (mediaFile == null || mediaFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Uploaded file not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
 
-            string fileName = Path.GetFileName(dto.Url ?? string.Empty);
+            string fileName = Path.GetFileName(mediaFile.FilePath ?? string.Empty);
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 response.IsSuccess = false;
@@ -353,7 +107,6 @@ namespace EdgePMO.API.Services
                 Url = matchedRelative,
                 DurationMinutes = dto.DurationSeconds,
                 Order = dto.Order,
-
             };
 
             _context.CourseVideos.Add(video);
@@ -368,17 +121,107 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetEnrolledUsersAsync(Guid courseId)
+        public async Task<Response> CreateAsync(CourseCreateDto dto)
         {
             Response response = new Response();
 
-            Course? course = await _context.Courses
-                .AsNoTracking()
-                .Include(c => c.CourseUsers)
-                    .ThenInclude(cu => cu.User)
-                .FirstOrDefaultAsync(c => c.CourseId == courseId);
+            bool instructorExists = await _context.Instructors.AnyAsync(i => i.InstructorId == dto.InstructorId);
+            if (!instructorExists)
+            {
+                response.IsSuccess = false;
+                response.Message = "Instructor not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
 
-            if (course == null)
+            MediaFile? mediaFile = await _context.MediaFiles.Where(m => m.Id == dto.CoursePictureId).FirstOrDefaultAsync();
+            if (mediaFile is null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course picture not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            Course? course = new Course
+            {
+                CourseId = Guid.NewGuid(),
+                Name = dto.Name,
+                Description = dto.Description,
+                Subtitle = dto.Subtitle,
+                MainObjective = dto?.MainObjective,
+                CoursePictureUrl = mediaFile.FilePath,
+                Overview = dto?.Overview,
+                WhatStudentsLearn = dto?.WhatStudentsLearn,
+                SoftwareUsed = dto?.SoftwareRequirements,
+                Requirements = dto?.Requirements,
+                WhoShouldAttend = dto?.WhoShouldAttend,
+                Level = dto?.Level,
+                Sessions = dto.Sessions,
+                Category = dto?.Category,
+                Certification = dto.HasCertificate,
+                Duration = dto.Duration?.ToString() ?? null,
+                InstructorId = dto.InstructorId,
+                Price = dto.Price,
+                IsActive = true,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Courses.Add(course);
+            await _context.SaveChangesAsync();
+
+            foreach (CourseContentDto? contentDto in dto.Content)
+            {
+                Response createOutlineResponse = await _courseContentServices.CreateCourseOutline(contentDto, course.CourseId);
+
+                if (!createOutlineResponse.IsSuccess)
+                {
+                    return createOutlineResponse;
+                }
+                var testId = createOutlineResponse.Result["outlineId"].ToString();
+                Guid outlineId = testId.ToGuidOrDefault(Guid.Empty);
+
+                if (outlineId.Equals(Guid.Empty))
+                {
+                    await DeleteAsync(course.CourseId);
+                    response.IsSuccess = false;
+                    response.Message = "Failed to create course outline.";
+                    response.Code = HttpStatusCode.InternalServerError;
+                    return response;
+                }
+
+                foreach (CourseVideoCreateDto courseCreateDto in contentDto.Videos)
+                {
+                    Response attachVideoResponse = await _courseContentServices.CreateCourseVideo(courseCreateDto, outlineId);
+                    if (!attachVideoResponse.IsSuccess)
+                    {
+                        return attachVideoResponse;
+                    }
+                }
+
+                foreach (CourseDocumentCreateDto courseDocumentDto in contentDto.Documents)
+                {
+                    Response attachDocumentResponse = await _courseContentServices.CreateCourseDocuemnt(courseDocumentDto, outlineId);
+                    if (!attachDocumentResponse.IsSuccess)
+                    {
+                        return attachDocumentResponse;
+                    }
+                }
+            }
+
+            Response? courseResponse = await GetByIdAsync(course.CourseId);
+            response.IsSuccess = true;
+            response.Message = "Course created successfully.";
+            response.Code = HttpStatusCode.Created;
+            response.Result = courseResponse.Result;
+            return response;
+        }
+
+        public async Task<Response> DeleteAsync(Guid id)
+        {
+            Response response = new Response();
+            Course? existing = await _context.Courses.FindAsync(id);
+            if (existing == null)
             {
                 response.IsSuccess = false;
                 response.Message = "Course not found.";
@@ -386,23 +229,36 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            var users = course.CourseUsers
-                .OrderByDescending(cu => cu.EnrolledAt)
-                .Select(cu => new
-                {
-                    id = cu.User.Id,
-                    userName = $"{cu.User.FirstName} {cu.User.LastName}",
-                    email = cu.User.Email,
-                    isActive = cu.User.IsActive ?? true,
-                    enrolledAt = cu.EnrolledAt,
-                    progress = cu.Progress
-                })
-                .ToArray();
+            _context.Courses.Remove(existing);
+            await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
-            response.Message = "Enrolled users retrieved.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("users", JsonSerializer.SerializeToNode(users) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Message = "Course deleted successfully.";
+            response.Code = HttpStatusCode.NoContent;
+            return response;
+        }
+
+        public async Task<Response> DeleteCourseVideoAsync(Guid courseVideoId)
+        {
+            Response response = new Response();
+
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(courseVideoId);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Video not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            string? videoUrl = existing.Url;
+
+            _context.CourseVideos.Remove(existing);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course video deleted.";
+            response.Code = HttpStatusCode.NoContent;
             return response;
         }
 
@@ -478,6 +334,176 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        public async Task<Response> GetAllAsync()
+        {
+            Response response = new Response();
+
+            List<Course>? courses = await _context.Courses
+                .AsNoTracking()
+                .Include(c => c.Instructor)
+                .Include(c => c.Testimonials)
+                .Include(c => c.Certificates)
+                .Include(c => c.Reviews)
+                    .ThenInclude(cr => cr.User)
+                .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Videos)
+                 .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Documents)
+                .Include(c => c.CourseUsers)
+                    .ThenInclude(cu => cu.User)
+                .ToListAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Courses retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<CourseReadDto>>(courses)) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> GetByIdAsync(Guid id)
+        {
+            Response response = new Response();
+
+            Course? course = await _context.Courses
+                .AsNoTracking()
+                .Include(c => c.Instructor)
+                .Include(c => c.Testimonials)
+                .Include(c => c.Certificates)
+                .Include(c => c.Reviews)
+                    .ThenInclude(cr => cr.User)
+                .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Videos)
+                 .Include(c => c.CourseOutline)
+                    .ThenInclude(co => co.Documents)
+                .Include(c => c.CourseUsers)
+                    .ThenInclude(cu => cu.User)
+                .FirstOrDefaultAsync(c => c.CourseId == id);
+
+            if (course == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            CourseReadDto? dto = _mapper.Map<CourseReadDto>(course);
+
+            response.IsSuccess = true;
+            response.Message = "Course retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("course", JsonSerializer.SerializeToNode(dto) ?? JsonValue.Create(new { }));
+            return response;
+        }
+
+        public async Task<Response> GetEnrolledUsersAsync(Guid courseId)
+        {
+            Response response = new Response();
+
+            Course? course = await _context.Courses
+                .AsNoTracking()
+                .Include(c => c.CourseUsers)
+                    .ThenInclude(cu => cu.User)
+                .FirstOrDefaultAsync(c => c.CourseId == courseId);
+
+            if (course == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            var users = course.CourseUsers
+                .OrderByDescending(cu => cu.EnrolledAt)
+                .Select(cu => new
+                {
+                    id = cu.User.Id,
+                    userName = $"{cu.User.FirstName} {cu.User.LastName}",
+                    email = cu.User.Email,
+                    isActive = cu.User.IsActive ?? true,
+                    enrolledAt = cu.EnrolledAt,
+                    progress = cu.Progress
+                })
+                .ToArray();
+
+            response.IsSuccess = true;
+            response.Message = "Enrolled users retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("users", JsonSerializer.SerializeToNode(users) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> IsUsersEnrolledAsync(Guid courseId, IEnumerable<string> emails)
+        {
+            Response response = new Response();
+
+            if (emails == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Emails list is required.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            List<string>? normalizedEmails = emails
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+
+            if (normalizedEmails.Count == 0)
+            {
+                response.IsSuccess = false;
+                response.Message = "No valid emails provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            bool courseExists = await _context.Courses.AnyAsync(c => c.CourseId == courseId);
+            if (!courseExists)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            var users = await _context.Users
+                .AsNoTracking()
+                .Where(u => normalizedEmails.Contains(u.Email.ToLower()))
+                .Select(u => new { u.Id, u.Email })
+                .ToListAsync();
+
+            HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
+            List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
+            Dictionary<Guid, string>? userIdMap = users.ToDictionary(u => u.Id, u => u.Email.Trim());
+            List<Guid>? userIds = users.Select(u => u.Id).ToList();
+
+            List<Guid>? enrollments = await _context.CourseUsers
+                .AsNoTracking()
+                .Where(cu => cu.CourseId == courseId && userIds.Contains(cu.UserId))
+                .Select(cu => cu.UserId)
+                .ToListAsync();
+
+            HashSet<Guid>? enrolledUserIds = new HashSet<Guid>(enrollments);
+
+            var results = users.Select(u => new
+            {
+                email = u.Email,
+                enrolled = enrolledUserIds.Contains(u.Id),
+                userId = u.Id
+            })
+            .ToList();
+
+            response.IsSuccess = true;
+            response.Message = "Enrollment check completed.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("results", JsonSerializer.SerializeToNode(results) ?? JsonValue.Create(Array.Empty<object>()));
+            response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
         public async Task<Response> UnenrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails)
         {
             Response response = new Response();
@@ -548,34 +574,11 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> IsUsersEnrolledAsync(Guid courseId, IEnumerable<string> emails)
+        public async Task<Response> UpdateAsync(CourseUpdateDto dto)
         {
             Response response = new Response();
-
-            if (emails == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Emails list is required.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            List<string>? normalizedEmails = emails
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim().ToLowerInvariant())
-                .Distinct()
-                .ToList();
-
-            if (normalizedEmails.Count == 0)
-            {
-                response.IsSuccess = false;
-                response.Message = "No valid emails provided.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            bool courseExists = await _context.Courses.AnyAsync(c => c.CourseId == courseId);
-            if (!courseExists)
+            Course? existing = await _context.Courses.FindAsync(dto.CourseId);
+            if (existing == null)
             {
                 response.IsSuccess = false;
                 response.Message = "Course not found.";
@@ -583,63 +586,81 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            var users = await _context.Users
-                .AsNoTracking()
-                .Where(u => normalizedEmails.Contains(u.Email.ToLower()))
-                .Select(u => new { u.Id, u.Email })
-                .ToListAsync();
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                existing.Name = dto.Name;
 
-            HashSet<string>? foundEmails = users.Select(u => u.Email.Trim().ToLowerInvariant()).ToHashSet();
-            List<string>? notFound = normalizedEmails.Except(foundEmails).ToList();
-            Dictionary<Guid, string>? userIdMap = users.ToDictionary(u => u.Id, u => u.Email.Trim());
-            List<Guid>? userIds = users.Select(u => u.Id).ToList();
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+                existing.Description = dto.Description;
 
-            List<Guid>? enrollments = await _context.CourseUsers
-                .AsNoTracking()
-                .Where(cu => cu.CourseId == courseId && userIds.Contains(cu.UserId))
-                .Select(cu => cu.UserId)
-                .ToListAsync();
+            if (dto.Price.HasValue)
+                existing.Price = dto.Price.Value;
 
-            HashSet<Guid>? enrolledUserIds = new HashSet<Guid>(enrollments);
+            if (!string.IsNullOrEmpty(dto.Duration))
+                existing.Duration = dto.Duration;
 
+            if (dto.IsActive.HasValue)
+                existing.IsActive = dto.IsActive.Value;
 
-            var results = users.Select(u => new
+            if (dto.CoursePictureId.HasValue)
             {
-                email = u.Email,
-                enrolled = enrolledUserIds.Contains(u.Id),
-                userId = u.Id
-            })
-            .ToList();
-
-            response.IsSuccess = true;
-            response.Message = "Enrollment check completed.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("results", JsonSerializer.SerializeToNode(results) ?? JsonValue.Create(Array.Empty<object>()));
-            response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
-            return response;
-        }
-
-        public async Task<Response> DeleteCourseVideoAsync(Guid courseVideoId)
-        {
-            Response response = new Response();
-
-            CourseVideo? existing = await _context.CourseVideos.FindAsync(courseVideoId);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Video not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
+                MediaFile? mediaFile = await _context.MediaFiles.FindAsync(dto.CoursePictureId.Value);
+                if (mediaFile != null)
+                {
+                    existing.CoursePictureUrl = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+                }
             }
 
-            string? videoUrl = existing.Url;
+            if (!string.IsNullOrWhiteSpace(dto.Overview))
+                existing.Overview = dto.Overview;
 
-            _context.CourseVideos.Remove(existing);
+            if (!string.IsNullOrWhiteSpace(dto.Subtitle))
+                existing.Subtitle = dto.Subtitle;
+
+            if (!string.IsNullOrWhiteSpace(dto.MainObjective))
+                existing.MainObjective = dto.MainObjective;
+
+            if (dto.Sessions.HasValue)
+                existing.Sessions = dto.Sessions.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.Level))
+                existing.Level = dto.Level;
+
+            if (dto.Rating.HasValue)
+                existing.Rating = dto.Rating.Value;
+
+            if (dto.Students.HasValue)
+                existing.Students = dto.Students.Value;
+
+            if (dto.InstructorId.HasValue)
+                existing.InstructorId = dto.InstructorId.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.Category))
+                existing.Category = dto.Category;
+
+            if (dto.Certification.HasValue)
+                existing.Certification = dto.Certification.Value;
+
+            if (dto.SoftwareUsed != null && dto.SoftwareUsed.Count > 0)
+                existing.SoftwareUsed = dto.SoftwareUsed;
+
+            if (dto.WhatStudentsLearn != null && dto.WhatStudentsLearn.Count > 0)
+                existing.WhatStudentsLearn = dto.WhatStudentsLearn;
+
+            if (dto.WhoShouldAttend != null && dto.WhoShouldAttend.Count > 0)
+                existing.WhoShouldAttend = dto.WhoShouldAttend;
+
+            if (dto.Requirements != null && dto.Requirements.Count > 0)
+                existing.Requirements = dto.Requirements;
+
+            existing.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
+            Response updatedCourse = await GetByIdAsync(existing.CourseId);
             response.IsSuccess = true;
-            response.Message = "Course video deleted.";
-            response.Code = HttpStatusCode.NoContent;
+            response.Message = "Course updated successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result = updatedCourse.Result;
             return response;
         }
 
@@ -677,7 +698,6 @@ namespace EdgePMO.API.Services
             response.Message = "Course video updated.";
             response.Code = HttpStatusCode.OK;
             return response;
-
         }
     }
 }

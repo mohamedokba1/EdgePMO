@@ -1,6 +1,8 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Models;
 using EdgePMO.API.Settings;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.Json;
@@ -13,11 +15,13 @@ namespace EdgePMO.API.Services
     {
         private readonly IWebHostEnvironment _env;
         private readonly ContentSettings _settings;
+        private readonly EdgepmoDbContext _context;
 
-        public ContentServices(IWebHostEnvironment env, IOptions<ContentSettings> settings)
+        public ContentServices(IWebHostEnvironment env, IOptions<ContentSettings> settings, EdgepmoDbContext context)
         {
             _env = env;
             _settings = settings.Value;
+            _context = context;
         }
 
         public async Task<Response> UploadMediaAsync(IFormFile file, string? relativePath = null)
@@ -284,5 +288,262 @@ namespace EdgePMO.API.Services
             string relativePath = fullPath.Replace(basePath, "").TrimStart(Path.DirectorySeparatorChar);
             return relativePath.Replace(Path.DirectorySeparatorChar, '/');
         }
+
+        public async Task<Response> UploadMediaStreamAsync(HttpRequest request, string fileName)
+        {
+            Response response = new Response();
+            string? extension = Path.GetExtension(fileName);
+
+            Directory.CreateDirectory("/var/www/uploads");
+            string? fullPath = Path.Combine("/var/www/uploads", fileName);
+            const int signatureLength = 16;
+            byte[] header = new byte[signatureLength];
+
+            int bytesRead = await ReadExactlyAsync(request.Body, header, signatureLength);
+
+            //if (!IsValidFileSignature(header, bytesRead, extension))
+            //{
+            //    response.IsSuccess = false;
+            //    response.Message = "Invalid file signature";
+            //    response.Code = HttpStatusCode.BadRequest;
+            //    response.Code = HttpStatusCode.BadRequest;
+            //    return response;
+            //}
+
+            await using FileStream? output = new FileStream(
+                fullPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 1024 * 1024,
+                useAsync: true);
+
+            await output.WriteAsync(header, 0, bytesRead);
+
+            await request.Body.CopyToAsync(output);
+
+            // Store the file metadata in the database if not exists
+
+            MediaFile? existingFile = _context.MediaFiles
+                .FirstOrDefault(mf => mf.FileName == fileName && mf.Extension == extension);
+            if (existingFile != null)
+            {
+                response.IsSuccess = true;
+                response.Message = "File already exists";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("Id", existingFile.Id);
+                response.Result.Add("filename", existingFile.FileName);
+                response.Result.Add("path", existingFile.FilePath);
+                response.Result.Add("size", existingFile.FileSize);
+                return response;
+            }
+
+            MediaFile mediaFile = new MediaFile
+            {
+                Id = Guid.NewGuid(),
+                FileName = fileName,
+                FilePath = fullPath,
+                UploadedAt = DateTime.UtcNow,
+                FileSize = output.Length,
+                Extension = extension
+            };
+
+            _context.MediaFiles.Add(mediaFile);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "File uploaded successfully";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("Id", mediaFile.Id);
+            response.Result.Add("filename", fileName);
+            response.Result.Add("path", fullPath);
+            response.Result.Add("size", output.Length);
+
+            return response;
+        }
+
+
+        private static bool IsValidFileSignature(byte[] header, int length, string ext)
+        {
+            if (length < 2)
+                return false;
+
+            ext = ext.ToLowerInvariant();
+
+            // ================= JPEG =================
+            if (ext == ".jpg" || ext == ".jpeg")
+                return header[0] == 0xFF && header[1] == 0xD8;
+
+            // ================= PNG =================
+            if (ext == ".png")
+            {
+                if (length < 8) return false;
+
+                return header[0] == 0x89 &&
+                       header[1] == 0x50 &&
+                       header[2] == 0x4E &&
+                       header[3] == 0x47 &&
+                       header[4] == 0x0D &&
+                       header[5] == 0x0A &&
+                       header[6] == 0x1A &&
+                       header[7] == 0x0A;
+            }
+
+            // ================= PDF =================
+            if (ext == ".pdf")
+                return length >= 4 &&
+                       header[0] == 0x25 &&
+                       header[1] == 0x50 &&
+                       header[2] == 0x44 &&
+                       header[3] == 0x46;
+
+            // ================= ZIP-BASED (DOCX, XLSX, PPTX, ZIP) =================
+            if (ext == ".zip" || ext == ".docx" || ext == ".xlsx" || ext == ".pptx")
+            {
+                if (length < 4) return false;
+
+                return header[0] == 0x50 &&
+                       header[1] == 0x4B &&
+                       (header[2] == 0x03 ||
+                        header[2] == 0x05 ||
+                        header[2] == 0x07);
+            }
+
+            // ================= MP4 / MOV =================
+            if (ext == ".mp4" || ext == ".mov")
+            {
+                if (length < 12) return false;
+
+                return header[4] == 0x66 &&
+                       header[5] == 0x74 &&
+                       header[6] == 0x79 &&
+                       header[7] == 0x70;
+            }
+
+            // ================= MKV =================
+            if (ext == ".mkv")
+                return length >= 4 &&
+                       header[0] == 0x1A &&
+                       header[1] == 0x45 &&
+                       header[2] == 0xDF &&
+                       header[3] == 0xA3;
+
+            // ================= OTHER TYPES =================
+            return true; // allowed by policy
+        }
+
+        private static async Task<int> ReadExactlyAsync(Stream stream,byte[] buffer, int count)
+        {
+            int totalRead = 0;
+            while (totalRead < count)
+            {
+                int read = await stream.ReadAsync(
+                    buffer,
+                    totalRead,
+                    count - totalRead);
+
+                if (read == 0)
+                    break;
+
+                totalRead += read;
+            }
+
+            return totalRead;
+        }
+
+        private static readonly Dictionary<string, List<byte[]>> FileSignatures = new(StringComparer.OrdinalIgnoreCase)
+        {
+                // ===================== Documents =====================
+                [".pdf"] = new()
+                {
+                    new byte[] { 0x25, 0x50, 0x44, 0x46 } // %PDF
+                },
+                [".docx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+                [".xlsx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+                [".pptx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+
+            // ===================== Images =====================
+                [".png"] = new()
+                {
+                    new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }
+                },
+                [".jpg"] = new()
+                {
+                    new byte[] { 0xFF, 0xD8 }
+                },
+                            [".jpeg"] = new()
+                {
+                    new byte[] { 0xFF, 0xD8 }
+                },
+                [".gif"] = new()
+                {
+                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, // GIF87a
+                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 }  // GIF89a
+                },
+                [".bmp"] = new()
+                {
+                    new byte[] { 0x42, 0x4D }
+                },
+
+                // ===================== Audio =====================
+                [".mp3"] = new()
+                {
+                    new byte[] { 0x49, 0x44, 0x33 }, // ID3
+                    new byte[] { 0xFF, 0xFB }
+                },
+                [".wav"] = new()
+                {
+                    new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
+                },
+
+                // ===================== Video =====================
+                [".mp4"] = new()
+                {
+                    new byte[] { 0x66, 0x74, 0x79, 0x70 } // ftyp (offset-based)
+                },
+                [".mov"] = new()
+                {
+                    new byte[] { 0x66, 0x74, 0x79, 0x70 }
+                },
+                [".avi"] = new()
+                {
+                     new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
+                },
+                [".mkv"] = new()
+                {
+                    new byte[] { 0x1A, 0x45, 0xDF, 0xA3 }
+                },
+
+                // ===================== Archives =====================
+                [".zip"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+                [".rar"] = new()
+                {
+                    new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07 }
+                },
+                [".7z"] = new()
+                {
+                    new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }
+                }
+            };
     }
 }

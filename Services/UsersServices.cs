@@ -12,10 +12,11 @@ namespace EdgePMO.API.Services
     public class UsersServices : IUserServices
     {
         private readonly EdgepmoDbContext _context;
-        private readonly ITokenService _tokenService;
-        private readonly IVerificationService _verificationService;
         private readonly IEmailService _emailService;
         private readonly IMapper _mapper;
+        private readonly ITokenService _tokenService;
+        private readonly IVerificationService _verificationService;
+
         public UsersServices(EdgepmoDbContext context, ITokenService tokenService, IVerificationService verificationService, IEmailService emailService, IMapper mapper)
         {
             _context = context;
@@ -25,19 +26,49 @@ namespace EdgePMO.API.Services
             _mapper = mapper;
         }
 
-
-        public async Task<Response> GetAllUsersAsync()
+        public async Task<Response> Activate(Guid userId)
         {
             Response response = new Response();
-            List<User>? users = await _context.Users
-                                .AsNoTracking()
-                                .OrderByDescending(u => u.CreatedAt)
-                                .ToListAsync();
 
-            response.IsSuccess = true;
-            response.Message = "Users retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("users", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<UserReadDto>>(users)));
+            User? findUser = await _context.Users.FindAsync(userId);
+            if (findUser != null)
+            {
+                findUser.IsActive = true;
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "User activated successfully!";
+                response.Code = HttpStatusCode.OK;
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.BadRequest;
+            }
+            return response;
+        }
+
+        public async Task<Response> Deactivate(Guid userId)
+        {
+            Response response = new Response();
+
+            User? findUser = await _context.Users.FindAsync(userId);
+            if (findUser != null)
+            {
+                findUser.IsActive = false;
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "User deactivated successfully!";
+                response.Code = HttpStatusCode.OK;
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.BadRequest;
+            }
             return response;
         }
 
@@ -87,6 +118,83 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Email verified successfully.";
             response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        public async Task<Response> GetAllUsersAsync()
+        {
+            Response response = new Response();
+            List<User>? users = await _context.Users
+                                .AsNoTracking()
+                                .OrderByDescending(u => u.CreatedAt)
+                                .ToListAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Users retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("users", JsonSerializer.SerializeToNode(_mapper.Map<IEnumerable<UserReadDto>>(users)));
+            return response;
+        }
+
+        public async Task<Response> GetProfileAsync(Guid? userId, string? email)
+        {
+            Response response = new Response();
+            IQueryable<User> query = _context.Users
+                .AsNoTracking()
+                .Include(u => u.CourseUsers)
+                    .ThenInclude(cu => cu.Course)
+                        .ThenInclude(c => c.Instructor)
+                .Include(u => u.CourseUsers)
+                    .ThenInclude(cu => cu.Course)
+                .Include(u => u.UserTemplates)
+                    .ThenInclude(ut => ut.Template);
+
+            User? user = null;
+            if (userId.HasValue && userId.Value != Guid.Empty)
+            {
+                user = await query.FirstOrDefaultAsync(u => u.Id == userId.Value);
+            }
+            else if (!string.IsNullOrWhiteSpace(email))
+            {
+                string emailLower = email.Trim().ToLowerInvariant();
+                user = await query.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "Either id or email must be provided.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            UserProfileDto profileDto = new UserProfileDto
+            {
+                User = _mapper.Map<UserReadDto>(user),
+                Courses = _mapper.Map<List<CourseReadDto>>(
+                    user.CourseUsers?
+                        .Where(cu => cu.Course != null && cu.User.Id == user.Id)
+                        .Select(cu => cu.Course)
+                        .Distinct()
+                        .ToList() ?? new List<Course>()
+                ),
+                Templates = _mapper.Map<IEnumerable<UserTemplateReadDto>>(
+                    user.UserTemplates ?? Enumerable.Empty<UserTemplate>()
+                )
+            };
+
+            response.IsSuccess = true;
+            response.Message = "User profile retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("profile", JsonSerializer.SerializeToNode(profileDto));
+
             return response;
         }
 
@@ -319,91 +427,6 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "Verification code sent";
             response.Code = HttpStatusCode.OK;
-            return response;
-        }
-
-        public async Task<Response> GetProfileAsync(Guid? userId, string? email)
-        {
-            Response response = new Response();
-            IQueryable<User> query = _context.Users
-                .AsNoTracking()
-                .Include(u => u.CourseUsers)
-                    .ThenInclude(cu => cu.Course)
-                        .ThenInclude(c => c.Instructor)
-                .Include(u => u.CourseUsers)
-                    .ThenInclude(cu => cu.Course)
-                .Include(u => u.UserTemplates)
-                    .ThenInclude(ut => ut.Template);
-
-            User? user = null;
-            if (userId.HasValue && userId.Value != Guid.Empty)
-            {
-                user = await query.FirstOrDefaultAsync(u => u.Id == userId.Value);
-            }
-            else if (!string.IsNullOrWhiteSpace(email))
-            {
-                string emailLower = email.Trim().ToLowerInvariant();
-                user = await query.FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower);
-            }
-            else
-            {
-                response.IsSuccess = false;
-                response.Message = "Either id or email must be provided.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            if (user == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "User not found.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
-            }
-
-            UserProfileDto profileDto = new UserProfileDto
-            {
-                User = _mapper.Map<UserReadDto>(user),
-                Courses = _mapper.Map<List<CourseReadDto>>(
-                    user.CourseUsers?
-                        .Where(cu => cu.Course != null && cu.User.Id == user.Id)
-                        .Select(cu => cu.Course)
-                        .Distinct()
-                        .ToList() ?? new List<Course>()
-                ),
-                Templates = _mapper.Map<IEnumerable<UserTemplateReadDto>>(
-                    user.UserTemplates ?? Enumerable.Empty<UserTemplate>()
-                )
-            };
-
-            response.IsSuccess = true;
-            response.Message = "User profile retrieved.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("profile", JsonSerializer.SerializeToNode(profileDto));
-
-            return response;
-        }
-
-        public async Task<Response> Deactivate(Guid userId)
-        {
-            Response response = new Response();
-
-            User? findUser = await _context.Users.FindAsync(userId);
-            if (findUser != null)
-            {
-                findUser.IsActive = false;
-                await _context.SaveChangesAsync();
-
-                response.IsSuccess = true;
-                response.Message = "User deactivated successfully!";
-                response.Code = HttpStatusCode.OK;   
-            }
-            else
-            {
-                response.IsSuccess = false;
-                response.Message = "User not found";
-                response.Code = HttpStatusCode.BadRequest;
-            }
             return response;
         }
     }

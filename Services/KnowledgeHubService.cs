@@ -25,10 +25,13 @@ namespace EdgePMO.API.Services
         {
             Response response = new();
 
-            if(dto.PublishDate.Kind == DateTimeKind.Unspecified)
+            if (dto.PublishDate.Kind == DateTimeKind.Unspecified)
             {
                 dto.PublishDate = DateTime.SpecifyKind(dto.PublishDate, DateTimeKind.Utc);
             }
+
+            MediaFile? coverImageFile = await _context.MediaFiles.FindAsync(dto.CoverImageId);
+            MediaFile? documentFile = await _context.MediaFiles.FindAsync(dto.DocumentId);
 
             KnowledgeHub? knowledgeHub = new KnowledgeHub
             {
@@ -36,8 +39,8 @@ namespace EdgePMO.API.Services
                 Excerpt = dto.Excerpt,
                 Author = dto.Author,
                 PublishDate = dto.PublishDate,
-                CoverImageUrl = dto.CoverImageUrl,
-                DocumentUrl = dto.DocumentUrl
+                CoverImageUrl = coverImageFile?.FilePath,
+                DocumentUrl = documentFile?.FilePath
             };
 
             if (dto.Sections?.Any() == true)
@@ -47,7 +50,7 @@ namespace EdgePMO.API.Services
                     KnowledgeHubSection? section = new KnowledgeHubSection
                     {
                         Heading = sectionDto.Heading,
-                        Order = sectionDto.Order              
+                        Order = sectionDto.Order
                     };
 
                     if (sectionDto.Blocks?.Any() == true)
@@ -85,28 +88,34 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetByIdAsync(Guid id)
+        public async Task<Response> DeleteAsync(Guid id)
         {
             Response response = new();
-
-            KnowledgeHub? knowledgeHub = await _context.KnowledgeHubs
-                                        .Include(k => k.Sections)
-                                        .ThenInclude(s => s.Blocks)
-                                        .FirstOrDefaultAsync(k => k.Id == id && k.IsActive);
+            KnowledgeHub? knowledgeHub = await _context.KnowledgeHubs.FirstOrDefaultAsync(k => k.Id == id);
 
             if (knowledgeHub == null)
             {
                 response.IsSuccess = false;
-                response.Message = $"Knowledge Hub article with id = {id} not found";
+                response.Message = "Knowledge Hub article not found";
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
 
-            response.IsSuccess = true;
-            response.Message = "knowledge article retrieved successfully!";
-            response.Result.Add("content", JsonSerializer.SerializeToNode(_mapper.Map<KnowledgeHubDto>(knowledgeHub)) ?? JsonValue.Create(new JsonObject()));
-            response.Code = HttpStatusCode.OK;
+            _context.KnowledgeHubs.Remove(knowledgeHub);
+            int rowsAffected = await _context.SaveChangesAsync();
 
+            if (rowsAffected > 0)
+            {
+                response.IsSuccess = true;
+                response.Message = "Knowledge Hub article deleted successfully!";
+                response.Code = HttpStatusCode.OK;
+            }
+            else
+            {
+                response.IsSuccess = false;
+                response.Message = "Failed to delete Knowledge Hub article";
+                response.Code = HttpStatusCode.BadRequest;
+            }
             return response;
         }
 
@@ -136,7 +145,32 @@ namespace EdgePMO.API.Services
             response.Result.Add("totalCount", totalCount);
             response.Result.Add("content", JsonSerializer.SerializeToNode(dtos) ?? JsonValue.Create(Array.Empty<object>));
             response.Code = HttpStatusCode.OK;
-            
+
+            return response;
+        }
+
+        public async Task<Response> GetByIdAsync(Guid id)
+        {
+            Response response = new();
+
+            KnowledgeHub? knowledgeHub = await _context.KnowledgeHubs
+                                        .Include(k => k.Sections)
+                                        .ThenInclude(s => s.Blocks)
+                                        .FirstOrDefaultAsync(k => k.Id == id && k.IsActive);
+
+            if (knowledgeHub == null)
+            {
+                response.IsSuccess = false;
+                response.Message = $"Knowledge Hub article with id = {id} not found";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            response.IsSuccess = true;
+            response.Message = "knowledge article retrieved successfully!";
+            response.Result.Add("content", JsonSerializer.SerializeToNode(_mapper.Map<KnowledgeHubDto>(knowledgeHub)) ?? JsonValue.Create(new JsonObject()));
+            response.Code = HttpStatusCode.OK;
+
             return response;
         }
 
@@ -161,11 +195,20 @@ namespace EdgePMO.API.Services
                 dto.PublishDate = DateTime.SpecifyKind(dto.PublishDate.Value, DateTimeKind.Utc);
                 knowledgeHub.PublishDate = dto.PublishDate.Value;
             }
+            if (dto.CoverImageId.HasValue)
+            {
+                MediaFile? coverImageFile = await _context.MediaFiles.FindAsync(dto.CoverImageId.Value);
+                knowledgeHub.CoverImageUrl = coverImageFile?.FilePath;
+            }
+
+            if (dto.DocumentId.HasValue)
+            {
+                MediaFile? documentFile = await _context.MediaFiles.FindAsync(dto.DocumentId.Value);
+                knowledgeHub.DocumentUrl = documentFile?.FilePath;
+            }
             knowledgeHub.Title = !string.IsNullOrEmpty(dto.Title) ? dto.Title : knowledgeHub.Title;
             knowledgeHub.Excerpt = !string.IsNullOrEmpty(dto.Excerpt) ? dto.Excerpt : knowledgeHub.Excerpt;
             knowledgeHub.Author = !string.IsNullOrEmpty(dto.Author) ? dto.Author : knowledgeHub.Author;
-            knowledgeHub.CoverImageUrl = !string.IsNullOrEmpty(dto.CoverImageUrl) ? dto.CoverImageUrl : knowledgeHub.CoverImageUrl;
-            knowledgeHub.DocumentUrl = !string.IsNullOrEmpty(dto.DocumentUrl) ? dto.DocumentUrl : knowledgeHub.DocumentUrl;
             knowledgeHub.IsActive = dto.IsActive.HasValue ? dto.IsActive.Value : knowledgeHub.IsActive;
             knowledgeHub.UpdatedAt = DateTime.UtcNow;
 
@@ -216,37 +259,5 @@ namespace EdgePMO.API.Services
 
             return response;
         }
-
-        public async Task<Response> DeleteAsync(Guid id)
-        {
-            Response response = new();
-            KnowledgeHub? knowledgeHub = await _context.KnowledgeHubs.FirstOrDefaultAsync(k => k.Id == id);
-
-            if (knowledgeHub == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Knowledge Hub article not found";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            _context.KnowledgeHubs.Remove(knowledgeHub);
-            int rowsAffected = await _context.SaveChangesAsync();
-
-            if (rowsAffected > 0)
-            {
-                response.IsSuccess = true;
-                response.Message = "Knowledge Hub article deleted successfully!";
-                response.Code = HttpStatusCode.OK;
-            }
-            else
-            {
-                response.IsSuccess = false;
-                response.Message = "Failed to delete Knowledge Hub article";
-                response.Code = HttpStatusCode.BadRequest;
-            }
-            return response;
-        }
-
     }
 }

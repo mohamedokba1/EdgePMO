@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -32,6 +31,7 @@ public class Program
         JwtSettings? jwtSettings = builder.Configuration.GetSection("JWT").Get<JwtSettings>();
 
         #region Serilog Configuration
+
         bool enableDbLogging = builder.Configuration.GetValue<bool>("Logging:EnableDatabaseLogging");
         var columnWriters = new Dictionary<string, ColumnWriterBase>
         {
@@ -66,7 +66,8 @@ public class Program
 
         Log.Logger = loggerConfig.CreateLogger();
         builder.Host.UseSerilog();
-        #endregion
+
+        #endregion Serilog Configuration
 
         builder.Services.Configure<VerificationSettings>(builder.Configuration.GetSection("VerificationSettings"));
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -117,7 +118,7 @@ public class Program
                             }
                         }
                     }
- 
+
                     Response? response = new Response()
                     {
                         IsSuccess = false,
@@ -134,7 +135,6 @@ public class Program
         builder.Services.AddSwaggerGen();
         builder.Services.AddHealthChecks()
                     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), name: "localhost");
-
 
         builder.Services.AddSingleton(jwtSettings);
         builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
@@ -227,7 +227,6 @@ public class Program
                     gracePeriod: TimeSpan.FromSeconds(30));
         });
 
-
         WebApplication? app = builder.Build();
 
         using (IServiceScope? scope = app.Services.CreateScope())
@@ -254,5 +253,4 @@ public class Program
 
         app.Run();
     }
-
 }

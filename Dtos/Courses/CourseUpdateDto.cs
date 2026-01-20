@@ -19,8 +19,7 @@ namespace EdgePMO.API.Dtos
 
         public double? Price { get; set; }
 
-        [StringLength(1000)]
-        public string? CoursePictureUrl { get; set; }
+        public Guid? CoursePictureId { get; set; }
 
         [StringLength(4000)]
         public string? Overview { get; set; }

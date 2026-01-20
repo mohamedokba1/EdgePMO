@@ -13,9 +13,9 @@ namespace EdgePMO.API.Dtos
         [Required]
         public DateTime PublishDate { get; set; }
         [Required]
-        public string CoverImageUrl { get; set; }
+        public Guid CoverImageId { get; set; }
         [Required]
-        public string DocumentUrl { get; set; }
+        public Guid DocumentId { get; set; }
         [Required]
         public List<CreateSectionDto> Sections { get; set; } = new();
     }

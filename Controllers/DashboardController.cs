@@ -12,16 +12,24 @@ namespace EdgePMO.API.Controllers
     {
         private readonly IPageContentServices _pageServices;
 
-
         public DashboardController(IPageContentServices pageServices)
         {
             _pageServices = pageServices;
         }
 
-        [HttpGet("pages/{slug}")]
-        public async Task<IActionResult> GetBySlug(string slug)
+        [Authorize(Policy = "Admin")]
+        [HttpPost("pages")]
+        public async Task<IActionResult> Create([FromBody] PageContentCreateDto dto)
         {
-            Response resp = await _pageServices.GetBySlugAsync(slug);
+            Response resp = await _pageServices.CreateAsync(dto);
+            return StatusCode((int)resp.Code, resp);
+        }
+
+        [Authorize(Policy = "Admin")]
+        [HttpDelete("pages/{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            Response resp = await _pageServices.DeleteAsync(id);
             return StatusCode((int)resp.Code, resp);
         }
 
@@ -39,11 +47,10 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
-        [Authorize(Policy = "Admin")]
-        [HttpPost("pages")]
-        public async Task<IActionResult> Create([FromBody] PageContentCreateDto dto)
+        [HttpGet("pages/{slug}")]
+        public async Task<IActionResult> GetBySlug(string slug)
         {
-            Response resp = await _pageServices.CreateAsync(dto);
+            Response resp = await _pageServices.GetBySlugAsync(slug);
             return StatusCode((int)resp.Code, resp);
         }
 
@@ -52,14 +59,6 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> Update([FromBody] PageContentUpdateDto dto)
         {
             Response resp = await _pageServices.UpdateAsync(dto);
-            return StatusCode((int)resp.Code, resp);
-        }
-
-        [Authorize(Policy = "Admin")]
-        [HttpDelete("pages/{id:guid}")]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            Response resp = await _pageServices.DeleteAsync(id);
             return StatusCode((int)resp.Code, resp);
         }
     }

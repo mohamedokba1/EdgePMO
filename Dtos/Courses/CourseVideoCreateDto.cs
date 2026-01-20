@@ -4,7 +4,6 @@ namespace EdgePMO.API.Dtos
 {
     public record CourseVideoCreateDto
     {
-        //[Required]
         public Guid CourseId { get; init; }
 
         [Required(ErrorMessage = "Outline Id can not be null or empty")]
@@ -18,12 +17,12 @@ namespace EdgePMO.API.Dtos
         public string? Description { get; init; }
 
         [Required(ErrorMessage = "Video url can not be null or empty")]
-        public string Url { get; init; } = null!;
+        public Guid Url { get; init; }
 
         public int DurationSeconds { get; init; }
 
         [Required]
-        [Range(1, 100, ErrorMessage ="Video order can not be null or empty")]
+        [Range(1, 100, ErrorMessage = "Video order can not be null or empty")]
         public int Order { get; init; }
     }
 }

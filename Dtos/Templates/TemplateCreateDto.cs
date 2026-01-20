@@ -20,13 +20,11 @@ namespace EdgePMO.API.Dtos
         [Required]
         public string? Category { get; init; }
 
-        [StringLength(1000)]
-        [Required]
-        public string? CoverImageUrl { get; init; }
+        [Required(ErrorMessage = "Cover image ID is required.")]
+        public Guid CoverImageId { get; init; }
 
-        [StringLength(1000)]
-        [Required]
-        public string? FilePath { get; init; }
+        [Required(ErrorMessage = "File path ID is required.")]
+        public Guid FilePathId { get; init; }
 
         [StringLength(1000)]
         [Required]

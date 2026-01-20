@@ -1,8 +1,10 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EdgePMO.API.Controllers
 {
@@ -13,10 +15,12 @@ namespace EdgePMO.API.Controllers
     {
         private const long MaxFileSize = 3L * 1024 * 1024 * 1024;
         private readonly IContentServices _contentServices;
+        private readonly EdgepmoDbContext _context;
 
-        public ContentController(IContentServices contentServices)
+        public ContentController(IContentServices contentServices, EdgepmoDbContext context)
         {
             _contentServices = contentServices;
+            _context = context;
         }
 
         [HttpGet("assets")]
@@ -62,57 +66,15 @@ namespace EdgePMO.API.Controllers
         {
             Response response = new Response();
             if (string.IsNullOrWhiteSpace(fileName))
-                return BadRequest("File name is required");
-
-            string? extension = Path.GetExtension(fileName);
-
-            Directory.CreateDirectory("/var/www/uploads");
-
-            string? storedFileName = $"{fileName}{extension}";
-            string? fullPath = Path.Combine("/var/www/uploads", storedFileName);
-
-            await using var output = new FileStream(
-                fullPath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                bufferSize: 1024 * 1024,
-                useAsync: true);
-
-            if (!IsValidFileSignature(Request.Body, extension))
-                return BadRequest("Invalid file signature");
-
-            await Request.Body.CopyToAsync(output);
-
-            response.IsSuccess = true;
-            response.Message = "File uploaded successfully";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("filename", storedFileName);
-            response.Result.Add("path", fullPath);
-            response.Result.Add("size", output.Length);
-
-            return Ok(response);
-
-        }
-
-        private static bool IsValidFileSignature(Stream stream, string ext)
-        {
-            stream.Position = 0;
-
-            Span<byte> header = stackalloc byte[8];
-            stream.Read(header);
-
-            stream.Position = 0;
-
-            return ext switch
             {
-                ".pdf" => header[0] == 0x25 && header[1] == 0x50,
-                ".png" => header[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }),
-                ".jpg" or ".jpeg" => header[0] == 0xFF && header[1] == 0xD8,
-                ".zip" => header[0] == 0x50 && header[1] == 0x4B,
-                ".mp4" => header[4] == 0x66 && header[5] == 0x74,
-                _ => true
-            };
+                response.IsSuccess = false;
+                response.Message = "File name is required";
+                response.Code = HttpStatusCode.BadRequest;
+                return StatusCode((int)response.Code, response);
+            }
+            response = await _contentServices.UploadMediaStreamAsync(Request, fileName);
+            return StatusCode((int)response.Code, response);
+          
         }
 
         [HttpDelete("assets")]

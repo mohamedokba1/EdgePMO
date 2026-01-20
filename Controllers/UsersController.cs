@@ -18,12 +18,50 @@ namespace EdgePMO.API.Controllers
             _userServices = userServices;
         }
 
+        [HttpGet("activate/{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ActivateUserByUserId(Guid id)
+        {
+            Response response = await _userServices.Activate(id);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpGet("delete/{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeactivateUserByUserId(Guid id)
+        {
+            Response response = await _userServices.Deactivate(id);
+            return StatusCode((int)response.Code, response);
+        }
+
         [HttpGet]
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GetAll()
         {
             Response users = await _userServices.GetAllUsersAsync();
             return Ok(users);
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            string? currentIdClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid? currentUserId = Guid.TryParse(currentIdClaim, out Guid tmpId) ? tmpId : null;
+            string? currentEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+
+            if (!currentUserId.HasValue && string.IsNullOrWhiteSpace(currentEmail))
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, new Response
+                {
+                    IsSuccess = false,
+                    Message = "Unauthorized: User ID or Email claim is missing.",
+                    Code = HttpStatusCode.Unauthorized
+                });
+            }
+
+            Response resp = await _userServices.GetProfileAsync(currentUserId, currentEmail);
+            return StatusCode((int)resp.Code, resp);
         }
 
         [HttpPost("login")]
@@ -47,6 +85,23 @@ namespace EdgePMO.API.Controllers
             };
 
             Response.Cookies.Append("accessToken", token, cookieOptions);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpGet("logout/{id}")]
+        [Authorize]
+        public async Task<IActionResult> Logout(Guid id)
+        {
+            Response response = await _userServices.Logout(id);
+
+            Response.Cookies.Delete("accessToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/"
+            });
+
             return StatusCode((int)response.Code, response);
         }
 
@@ -76,23 +131,6 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
-        [HttpGet("logout/{id}")]
-        [Authorize]
-        public async Task<IActionResult> Logout(Guid id)
-        {
-            Response response = await _userServices.Logout(id);
-
-            Response.Cookies.Delete("accessToken", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Path = "/"
-            });
-
-            return StatusCode((int)response.Code, response);
-        }
-
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterUserDto dto)
@@ -105,15 +143,7 @@ namespace EdgePMO.API.Controllers
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] RegisterUserDto dto)
         {
-            Response response = await _userServices.Register(dto);
-            return StatusCode((int)response.Code, response);
-        }
-
-        [HttpPost("verify-email")]
-        [AllowAnonymous]
-        public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
-        {
-            Response response = await _userServices.EmailVerification(dto);
+            Response response = await _userServices.Register(dto, true);
             return StatusCode((int)response.Code, response);
         }
 
@@ -125,33 +155,11 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
-        [HttpGet("profile")]
-        [Authorize]
-        public async Task<IActionResult> GetProfile()
+        [HttpPost("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
         {
-            string? currentIdClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            Guid? currentUserId = Guid.TryParse(currentIdClaim, out Guid tmpId) ? tmpId : null;
-            string? currentEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
-
-            if (!currentUserId.HasValue && string.IsNullOrWhiteSpace(currentEmail))
-            {
-                return StatusCode(StatusCodes.Status401Unauthorized, new Response
-                {
-                    IsSuccess = false,
-                    Message = "Unauthorized: User ID or Email claim is missing.",
-                    Code = HttpStatusCode.Unauthorized
-                });
-            }
-
-            Response resp = await _userServices.GetProfileAsync(currentUserId, currentEmail);
-            return StatusCode((int)resp.Code, resp);
-        }
-
-        [HttpGet("delete/{id:guid}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeactivateUserByUserId(Guid id)
-        {
-            Response response = await _userServices.Deactivate(id);
+            Response response = await _userServices.EmailVerification(dto);
             return StatusCode((int)response.Code, response);
         }
     }

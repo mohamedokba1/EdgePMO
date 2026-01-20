@@ -27,8 +27,8 @@ namespace EdgePMO.API.Dtos
         [StringLength(100)]
         public string? Category { get; set; }
 
-        [StringLength(1000)]
-        public string? CoursePictureUrl { get; set; }
+        [Required(ErrorMessage = "Course picture ID is required.")]
+        public Guid? CoursePictureId { get; set; }
 
         [StringLength(10000)]
         public string? Overview { get; set; }
@@ -37,7 +37,7 @@ namespace EdgePMO.API.Dtos
         public List<string> WhatStudentsLearn { get; set; } = new List<string>();
 
         [MaxLength(10, ErrorMessage = "Maximum 10 software requirements allowed")]
-        public List<string> SoftwareRequirements{ get; set; } = new List<string>();
+        public List<string> SoftwareRequirements { get; set; } = new List<string>();
 
         [MaxLength(15, ErrorMessage = "Maximum 15 requirements allowed")]
         public List<string> Requirements { get; set; } = new List<string>();

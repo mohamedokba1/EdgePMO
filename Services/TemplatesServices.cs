@@ -12,14 +12,81 @@ namespace EdgePMO.API.Services
     public class TemplatesServices : ITemplateServices
     {
         private readonly EdgepmoDbContext _context;
-        private readonly IContentServices _contentServices;
         private readonly IMapper _mapper;
 
-        public TemplatesServices(EdgepmoDbContext context, IContentServices contentServices, IMapper mapper)
+        public TemplatesServices(EdgepmoDbContext context, IMapper mapper)
         {
             _context = context;
-            _contentServices = contentServices;
             _mapper = mapper;
+        }
+
+        public async Task<Response> CreateAsync(TemplateCreateDto dto)
+        {
+            Response response = new Response();
+
+            MediaFile? coverImageFile = await _context.MediaFiles.FindAsync(dto.CoverImageId);
+            if (coverImageFile == null || coverImageFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Cover image file doesn't exist.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            MediaFile? templateFile = await _context.MediaFiles.FindAsync(dto.FilePathId);
+            if (templateFile == null || templateFile.FilePath == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Template file doesn't exist.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+            Template? template = new Template
+            {
+                Id = Guid.NewGuid(),
+                Name = dto.Name.Trim(),
+                Description = dto.Description?.Trim(),
+                Price = dto.Price,
+                Category = dto.Category,
+                CoverImageUrl = coverImageFile.FilePath,
+                IsActive = true,
+                FilePath = templateFile.FilePath,
+                Type = dto.Type,
+                Format = dto.Format,
+                Size = dto.Size,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Templates.Add(template);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Template created.";
+            response.Code = HttpStatusCode.Created;
+            return response;
+        }
+
+        public async Task<Response> DeleteAsync(Guid id)
+        {
+            Response response = new Response();
+
+            Template? existing = await _context.Templates.FindAsync(id);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Template not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            existing.IsActive = false;
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Template deleted.";
+            response.Code = HttpStatusCode.NoContent;
+            return response;
         }
 
         public async Task<Response> GetAllAsync()
@@ -110,132 +177,6 @@ namespace EdgePMO.API.Services
             response.Message = "Template retrieved.";
             response.Code = HttpStatusCode.OK;
             response.Result.Add("template", JsonSerializer.SerializeToNode(dto) ?? JsonValue.Create(new { }));
-            return response;
-        }
-
-        public async Task<Response> CreateAsync(TemplateCreateDto dto)
-        {
-            Response response = new Response();
-
-            Template? template = new Template
-            {
-                Id = Guid.NewGuid(),
-                Name = dto.Name.Trim(),
-                Description = dto.Description?.Trim(),
-                Price = dto.Price,
-                Category = dto.Category,
-                CoverImageUrl = dto.CoverImageUrl,
-                IsActive = true,
-                FilePath = dto.FilePath,
-                Type = dto.Type,
-                Format = dto.Format,
-                Size = dto.Size,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.Templates.Add(template);
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Template created.";
-            response.Code = HttpStatusCode.Created;
-            return response;
-        }
-
-        public async Task<Response> UpdateAsync(TemplateUpdateDto dto)
-        {
-            Response response = new Response();
-
-            Template? existing = await _context.Templates.FindAsync(dto.Id);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Template not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Name))
-            {
-                existing.Name = dto.Name.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Description))
-            {
-                existing.Description = dto.Description?.Trim();
-            }
-
-            if (dto.Price.HasValue)
-            {
-                existing.Price = dto.Price.Value;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Category))
-            {
-                existing.Category = dto.Category;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.CoverImageUrl))
-            {
-                existing.CoverImageUrl = dto.CoverImageUrl;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.FilePath))
-            {
-                existing.FilePath = dto.FilePath;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Type))
-            {
-                existing.Type = dto.Type;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Format))
-            {
-                existing.Format = dto.Format;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Size))
-            {
-                existing.Size = dto.Size;
-            }
-
-            if (dto.IsActive.HasValue)
-            {
-                existing.IsActive = dto.IsActive.Value;
-            }
-
-            existing.UpdatedAt = DateTime.UtcNow;
-            _context.Entry(existing).Property(e => e.UpdatedAt).IsModified = true;
-
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Template updated.";
-            response.Code = HttpStatusCode.OK;
-            return response;
-        }
-
-        public async Task<Response> DeleteAsync(Guid id)
-        {
-            Response response = new Response();
-
-            Template? existing = await _context.Templates.FindAsync(id);
-            if (existing == null)
-            {
-                response.IsSuccess = false;
-                response.Message = "Template not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
-            existing.IsActive = false;
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Message = "Template deleted.";
-            response.Code = HttpStatusCode.NoContent;
             return response;
         }
 
@@ -374,6 +315,88 @@ namespace EdgePMO.API.Services
             response.Result.Add("revoked", JsonSerializer.SerializeToNode(revoked) ?? JsonValue.Create(Array.Empty<object>()));
             response.Result.Add("notEnrolled", JsonSerializer.SerializeToNode(notEnrolled) ?? JsonValue.Create(Array.Empty<object>()));
             response.Result.Add("notFound", JsonSerializer.SerializeToNode(notFound) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
+        public async Task<Response> UpdateAsync(TemplateUpdateDto dto)
+        {
+            Response response = new Response();
+
+            Template? existing = await _context.Templates.FindAsync(dto.Id);
+            if (existing == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Template not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                existing.Name = dto.Name.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+            {
+                existing.Description = dto.Description?.Trim();
+            }
+
+            if (dto.Price.HasValue)
+            {
+                existing.Price = dto.Price.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Category))
+            {
+                existing.Category = dto.Category;
+            }
+
+            if (dto.CoverImageId.HasValue)
+            {
+                MediaFile? coverImageFile = await _context.MediaFiles.FindAsync(dto.CoverImageId.Value);
+                if (coverImageFile != null)
+                {
+                    existing.CoverImageUrl = coverImageFile.FilePath;
+                }
+            }
+
+            if (dto.FilePathId.HasValue)
+            {
+                MediaFile? filePathFile = await _context.MediaFiles.FindAsync(dto.FilePathId.Value);
+                if (filePathFile != null)
+                {
+                    existing.FilePath = filePathFile.FilePath;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Type))
+            {
+                existing.Type = dto.Type;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Format))
+            {
+                existing.Format = dto.Format;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Size))
+            {
+                existing.Size = dto.Size;
+            }
+
+            if (dto.IsActive.HasValue)
+            {
+                existing.IsActive = dto.IsActive.Value;
+            }
+
+            existing.UpdatedAt = DateTime.UtcNow;
+            _context.Entry(existing).Property(e => e.UpdatedAt).IsModified = true;
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Template updated.";
+            response.Code = HttpStatusCode.OK;
             return response;
         }
     }
