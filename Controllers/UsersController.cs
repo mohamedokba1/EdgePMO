@@ -19,7 +19,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("activate/{id:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> ActivateUserByUserId(Guid id)
         {
             Response response = await _userServices.Activate(id);
@@ -27,7 +27,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpGet("delete/{id:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> DeactivateUserByUserId(Guid id)
         {
             Response response = await _userServices.Deactivate(id);

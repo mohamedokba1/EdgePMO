@@ -13,15 +13,232 @@ namespace EdgePMO.API.Services
 {
     public class ContentServices : IContentServices
     {
+        private static readonly Dictionary<string, List<byte[]>> FileSignatures = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // ===================== Documents =====================
+            [".pdf"] = new()
+                {
+                    new byte[] { 0x25, 0x50, 0x44, 0x46 } // %PDF
+                },
+            [".docx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+            [".xlsx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+            [".pptx"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+
+            // ===================== Images =====================
+            [".png"] = new()
+                {
+                    new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }
+                },
+            [".jpg"] = new()
+                {
+                    new byte[] { 0xFF, 0xD8 }
+                },
+            [".jpeg"] = new()
+                {
+                    new byte[] { 0xFF, 0xD8 }
+                },
+            [".gif"] = new()
+                {
+                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, // GIF87a
+                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 }  // GIF89a
+                },
+            [".bmp"] = new()
+                {
+                    new byte[] { 0x42, 0x4D }
+                },
+
+            // ===================== Audio =====================
+            [".mp3"] = new()
+                {
+                    new byte[] { 0x49, 0x44, 0x33 }, // ID3
+                    new byte[] { 0xFF, 0xFB }
+                },
+            [".wav"] = new()
+                {
+                    new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
+                },
+
+            // ===================== Video =====================
+            [".mp4"] = new()
+                {
+                    new byte[] { 0x66, 0x74, 0x79, 0x70 } // ftyp (offset-based)
+                },
+            [".mov"] = new()
+                {
+                    new byte[] { 0x66, 0x74, 0x79, 0x70 }
+                },
+            [".avi"] = new()
+                {
+                     new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
+                },
+            [".mkv"] = new()
+                {
+                    new byte[] { 0x1A, 0x45, 0xDF, 0xA3 }
+                },
+
+            // ===================== Archives =====================
+            [".zip"] = new()
+                {
+                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
+                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
+                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
+                },
+            [".rar"] = new()
+                {
+                    new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07 }
+                },
+            [".7z"] = new()
+                {
+                    new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }
+                }
+        };
+
+        private readonly EdgepmoDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ContentSettings _settings;
-        private readonly EdgepmoDbContext _context;
 
         public ContentServices(IWebHostEnvironment env, IOptions<ContentSettings> settings, EdgepmoDbContext context)
         {
             _env = env;
             _settings = settings.Value;
             _context = context;
+        }
+
+        public Task<Response> DeleteAssetAsync(string fileName)
+        {
+            Response response = new Response();
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                response.IsSuccess = false;
+                response.Message = "fileName is required.";
+                response.Code = HttpStatusCode.BadRequest;
+                return Task.FromResult(response);
+            }
+
+            fileName = Path.GetFileName(fileName);
+
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
+            string? filePath = Path.Combine(webRoot, fileName);
+
+            if (!File.Exists(filePath))
+            {
+                response.IsSuccess = false;
+                response.Message = "File not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return Task.FromResult(response);
+            }
+
+            File.Delete(filePath);
+
+            response.IsSuccess = true;
+            response.Message = "File deleted successfully.";
+            response.Code = HttpStatusCode.NoContent;
+            return Task.FromResult(response);
+        }
+
+        public Task<bool> FileExistsAsync(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrEmpty(filePath))
+                return Task.FromResult(false);
+
+            //string uploadsRelative = string.IsNullOrWhiteSpace(relativePath) ? (_settings.UploadsRelative ?? "uploads") : relativePath;
+            //string? webRoot = Path.Combine(relativePath ?? "/var/www/", uploadsRelative);
+            //string safeFileName = Path.GetFileName(fileName);
+            //string filePath = Path.Combine(webRoot, safeFileName);
+
+            return Task.FromResult(File.Exists(filePath));
+        }
+
+        public Task<Response> ListAssetsAsync()
+        {
+            Response response = new Response();
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string webRoot = Path.Combine("/var/www/", uploadsRelative);
+
+            if (!Directory.Exists(webRoot))
+            {
+                response.IsSuccess = true;
+                response.Message = "No assets found.";
+                response.Code = HttpStatusCode.OK;
+                return Task.FromResult(response);
+            }
+
+            string[]? topLevelFolders = Directory.GetDirectories(webRoot);
+
+            foreach (string folder in topLevelFolders)
+            {
+                string folderName = Path.GetFileName(folder);
+                object? folderStructure = BuildDynamicStructure(folder, webRoot);
+                response.Result.Add(folderName, JsonSerializer.SerializeToNode(folderStructure) ?? JsonValue.Create(new { }));
+            }
+
+            response.IsSuccess = true;
+            response.Message = "Assets retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+
+            return Task.FromResult(response);
+        }
+
+        public Task<Response> ListCoursesAssetsAsync()
+        {
+            Response response = new Response();
+
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
+
+            string coursesPath = Path.Combine(webRoot, "courses");
+
+            if (!Directory.Exists(webRoot))
+            {
+                response.IsSuccess = true;
+                response.Message = "No assets found.";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("courses", JsonSerializer.SerializeToNode(Array.Empty<string>()) ?? JsonValue.Create(Array.Empty<object>()));
+                return Task.FromResult(response);
+            }
+
+            string[]? files = Directory.EnumerateFiles(coursesPath, "*", SearchOption.AllDirectories)
+                                       .Select(f => $"{Path.GetFullPath(f)}")
+                                       .ToArray();
+
+            response.IsSuccess = true;
+            response.Message = "Assets retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("courses", JsonSerializer.SerializeToNode(files) ?? JsonValue.Create(Array.Empty<object>()));
+            return Task.FromResult(response);
+        }
+
+        public string SanitizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            path = path.Trim();
+            path = path.TrimStart('/', '\\');
+            path = path.Replace("\\", "/");
+            path = Regex.Replace(path, @"\.\.(/|\\|$)", string.Empty);
+            path = path.Replace("./", string.Empty);
+            path = path.Replace("/..", string.Empty);
+            path = Regex.Replace(path, @"/+", "/");
+
+            return path;
         }
 
         public async Task<Response> UploadMediaAsync(IFormFile file, string? relativePath = null)
@@ -136,164 +353,10 @@ namespace EdgePMO.API.Services
             }
         }
 
-        public Task<Response> DeleteAssetAsync(string fileName)
-        {
-            Response response = new Response();
-
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                response.IsSuccess = false;
-                response.Message = "fileName is required.";
-                response.Code = HttpStatusCode.BadRequest;
-                return Task.FromResult(response);
-            }
-
-            fileName = Path.GetFileName(fileName);
-
-            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
-            string? filePath = Path.Combine(webRoot, fileName);
-
-            if (!File.Exists(filePath))
-            {
-                response.IsSuccess = false;
-                response.Message = "File not found.";
-                response.Code = HttpStatusCode.BadRequest;
-                return Task.FromResult(response);
-            }
-
-            File.Delete(filePath);
-
-            response.IsSuccess = true;
-            response.Message = "File deleted successfully.";
-            response.Code = HttpStatusCode.NoContent;
-            return Task.FromResult(response);
-        }
-
-        public Task<bool> FileExistsAsync(string filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrEmpty(filePath))
-                return Task.FromResult(false);
-
-            //string uploadsRelative = string.IsNullOrWhiteSpace(relativePath) ? (_settings.UploadsRelative ?? "uploads") : relativePath;
-            //string? webRoot = Path.Combine(relativePath ?? "/var/www/", uploadsRelative);
-            //string safeFileName = Path.GetFileName(fileName);
-            //string filePath = Path.Combine(webRoot, safeFileName);
-
-            return Task.FromResult(File.Exists(filePath));
-        }
-
-        public string SanitizePath(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-                return string.Empty;
-
-            path = path.Trim();
-            path = path.TrimStart('/', '\\');
-            path = path.Replace("\\", "/");
-            path = Regex.Replace(path, @"\.\.(/|\\|$)", string.Empty);
-            path = path.Replace("./", string.Empty);
-            path = path.Replace("/..", string.Empty);
-            path = Regex.Replace(path, @"/+", "/");
-
-            return path;
-        }
-
-        public Task<Response> ListCoursesAssetsAsync()
-        {
-            Response response = new Response();
-
-            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string? webRoot = Path.Combine("/var/www/", uploadsRelative);
-
-            string coursesPath = Path.Combine(webRoot, "courses");
-
-            if (!Directory.Exists(webRoot))
-            {
-                response.IsSuccess = true;
-                response.Message = "No assets found.";
-                response.Code = HttpStatusCode.OK;
-                response.Result.Add("courses", JsonSerializer.SerializeToNode(Array.Empty<string>()) ?? JsonValue.Create(Array.Empty<object>()));
-                return Task.FromResult(response);
-            }
-
-            string[]? files = Directory.EnumerateFiles(coursesPath, "*", SearchOption.AllDirectories)
-                                       .Select(f => $"{Path.GetFullPath(f)}")
-                                       .ToArray();
-
-            response.IsSuccess = true;
-            response.Message = "Assets retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("courses", JsonSerializer.SerializeToNode(files) ?? JsonValue.Create(Array.Empty<object>()));
-            return Task.FromResult(response);
-        }
-
-        public Task<Response> ListAssetsAsync()
-        {
-            Response response = new Response();
-            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string webRoot = Path.Combine("/var/www/", uploadsRelative);
-
-            if (!Directory.Exists(webRoot))
-            {
-                response.IsSuccess = true;
-                response.Message = "No assets found.";
-                response.Code = HttpStatusCode.OK;
-                return Task.FromResult(response);
-            }
-
-            string[]? topLevelFolders = Directory.GetDirectories(webRoot);
-
-            foreach (string folder in topLevelFolders)
-            {
-                string folderName = Path.GetFileName(folder);
-                object? folderStructure = BuildDynamicStructure(folder, webRoot);
-                response.Result.Add(folderName, JsonSerializer.SerializeToNode(folderStructure) ?? JsonValue.Create(new { }));
-            }
-
-            response.IsSuccess = true;
-            response.Message = "Assets retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-
-            return Task.FromResult(response);
-        }
-
-        private object BuildDynamicStructure(string path, string webRoot)
-        {
-            string[]? subDirs = Directory.GetDirectories(path);
-
-            // If no subdirectories, return files in current folder
-            if (subDirs.Length == 0)
-            {
-                string[]? files = Directory.GetFiles(path)
-                    .Select(f => GetRelativePath(f, webRoot))
-                    .ToArray();
-                return files;
-            }
-
-            // If subdirectories exist, process them recursively
-            Dictionary<string, object>? result = new Dictionary<string, object>();
-
-            foreach (string subDir in subDirs)
-            {
-                string subDirName = Path.GetFileName(subDir);
-                result.Add(subDirName, BuildDynamicStructure(subDir, webRoot));
-            }
-
-            return result;
-        }
-
-        private string GetRelativePath(string fullPath, string basePath)
-        {
-            string relativePath = fullPath.Replace(basePath, "").TrimStart(Path.DirectorySeparatorChar);
-            return relativePath.Replace(Path.DirectorySeparatorChar, '/');
-        }
-
         public async Task<Response> UploadMediaStreamAsync(HttpRequest request, string fileName)
         {
             Response response = new Response();
             string? extension = Path.GetExtension(fileName);
-
             Directory.CreateDirectory("/var/www/uploads");
             string? fullPath = Path.Combine("/var/www/uploads", fileName);
             const int signatureLength = 16;
@@ -361,7 +424,6 @@ namespace EdgePMO.API.Services
 
             return response;
         }
-
 
         private static bool IsValidFileSignature(byte[] header, int length, string ext)
         {
@@ -432,7 +494,7 @@ namespace EdgePMO.API.Services
             return true; // allowed by policy
         }
 
-        private static async Task<int> ReadExactlyAsync(Stream stream,byte[] buffer, int count)
+        private static async Task<int> ReadExactlyAsync(Stream stream, byte[] buffer, int count)
         {
             int totalRead = 0;
             while (totalRead < count)
@@ -451,99 +513,35 @@ namespace EdgePMO.API.Services
             return totalRead;
         }
 
-        private static readonly Dictionary<string, List<byte[]>> FileSignatures = new(StringComparer.OrdinalIgnoreCase)
+        private object BuildDynamicStructure(string path, string webRoot)
         {
-                // ===================== Documents =====================
-                [".pdf"] = new()
-                {
-                    new byte[] { 0x25, 0x50, 0x44, 0x46 } // %PDF
-                },
-                [".docx"] = new()
-                {
-                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
-                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
-                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
-                },
-                [".xlsx"] = new()
-                {
-                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
-                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
-                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
-                },
-                [".pptx"] = new()
-                {
-                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
-                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
-                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
-                },
+            string[]? subDirs = Directory.GetDirectories(path);
 
-            // ===================== Images =====================
-                [".png"] = new()
-                {
-                    new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }
-                },
-                [".jpg"] = new()
-                {
-                    new byte[] { 0xFF, 0xD8 }
-                },
-                            [".jpeg"] = new()
-                {
-                    new byte[] { 0xFF, 0xD8 }
-                },
-                [".gif"] = new()
-                {
-                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x37, 0x61 }, // GIF87a
-                    new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 }  // GIF89a
-                },
-                [".bmp"] = new()
-                {
-                    new byte[] { 0x42, 0x4D }
-                },
+            // If no subdirectories, return files in current folder
+            if (subDirs.Length == 0)
+            {
+                string[]? files = Directory.GetFiles(path)
+                    .Select(f => GetRelativePath(f, webRoot))
+                    .ToArray();
+                return files;
+            }
 
-                // ===================== Audio =====================
-                [".mp3"] = new()
-                {
-                    new byte[] { 0x49, 0x44, 0x33 }, // ID3
-                    new byte[] { 0xFF, 0xFB }
-                },
-                [".wav"] = new()
-                {
-                    new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
-                },
+            // If subdirectories exist, process them recursively
+            Dictionary<string, object>? result = new Dictionary<string, object>();
 
-                // ===================== Video =====================
-                [".mp4"] = new()
-                {
-                    new byte[] { 0x66, 0x74, 0x79, 0x70 } // ftyp (offset-based)
-                },
-                [".mov"] = new()
-                {
-                    new byte[] { 0x66, 0x74, 0x79, 0x70 }
-                },
-                [".avi"] = new()
-                {
-                     new byte[] { 0x52, 0x49, 0x46, 0x46 } // RIFF
-                },
-                [".mkv"] = new()
-                {
-                    new byte[] { 0x1A, 0x45, 0xDF, 0xA3 }
-                },
+            foreach (string subDir in subDirs)
+            {
+                string subDirName = Path.GetFileName(subDir);
+                result.Add(subDirName, BuildDynamicStructure(subDir, webRoot));
+            }
 
-                // ===================== Archives =====================
-                [".zip"] = new()
-                {
-                    new byte[] { 0x50, 0x4B, 0x03, 0x04 },
-                    new byte[] { 0x50, 0x4B, 0x05, 0x06 },
-                    new byte[] { 0x50, 0x4B, 0x07, 0x08 }
-                },
-                [".rar"] = new()
-                {
-                    new byte[] { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07 }
-                },
-                [".7z"] = new()
-                {
-                    new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }
-                }
-            };
+            return result;
+        }
+
+        private string GetRelativePath(string fullPath, string basePath)
+        {
+            string relativePath = fullPath.Replace(basePath, "").TrimStart(Path.DirectorySeparatorChar);
+            return relativePath.Replace(Path.DirectorySeparatorChar, '/');
+        }
     }
 }

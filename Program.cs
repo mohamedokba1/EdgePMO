@@ -88,6 +88,7 @@ public class Program
         builder.Services.AddScoped<ICourseReviewServices, CourseReviewServices>();
         builder.Services.AddScoped<IKnowledgeHubService, KnowledgeHubService>();
         builder.Services.AddScoped<IPageContentServices, PageContentServices>();
+        builder.Services.AddScoped<IConsultationRequestServices, ConsultationRequestServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {

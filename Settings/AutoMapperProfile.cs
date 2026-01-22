@@ -18,7 +18,6 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.MinValue));
 
-
             CreateMap<CourseVideo, CourseVideoReadDto>();
 
             CreateMap<Instructor, InstructorReadDto>();
@@ -114,7 +113,6 @@ namespace EdgePMO.API.Settings
                 .ForMember(d => d.Description, o => o.MapFrom(s => s.Description))
                 .ForMember(d => d.CoursePictureUrl, o => o.MapFrom(s => s.CoursePictureUrl));
 
-
             CreateMap<PurchaseRequest, PurchaseRequestResponseDto>()
                 .ForMember(d => d.Template, o => o.MapFrom(s => s.Template))
                 .ForMember(d => d.Course, o => o.MapFrom(s => s.Course))
@@ -130,7 +128,6 @@ namespace EdgePMO.API.Settings
                .ForMember(d => d.Content, opt => opt.MapFrom(s => s.Content))
                .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}"))
                .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email));
-
 
             CreateMap<KnowledgeHub, KnowledgeHubDto>()
                 .ForMember(dest => dest.Sections,
@@ -176,8 +173,13 @@ namespace EdgePMO.API.Settings
                 )
             );
 
+            CreateMap<ConsultationRequest, ConsultationRequestReadDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Phone))
+            .ForMember(dest => dest.Message, opt => opt.MapFrom(src => src.Message))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt));
         }
-
     }
 }
-

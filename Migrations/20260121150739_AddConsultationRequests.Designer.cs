@@ -3,6 +3,7 @@ using System;
 using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EdgePMO.API.Migrations
 {
     [DbContext(typeof(EdgepmoDbContext))]
-    partial class EdgepmoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260121150739_AddConsultationRequests")]
+    partial class AddConsultationRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -65,11 +68,6 @@ namespace EdgePMO.API.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("IsConsultant")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Message")
                         .IsRequired()

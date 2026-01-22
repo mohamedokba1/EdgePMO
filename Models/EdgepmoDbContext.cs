@@ -14,32 +14,32 @@ public partial class EdgepmoDbContext : DbContext
     {
     }
 
-    public virtual DbSet<User> Users { get; set; }
-    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
-    public DbSet<Course> Courses { get; set; }
-    public DbSet<Instructor> Instructors { get; set; }
-    public DbSet<Testimonial> Testimonials { get; set; }
     public DbSet<Certificate> Certificates { get; set; }
-    public DbSet<CourseVideo> CourseVideos { get; set; }
-    public DbSet<CourseDocument> CourseDocuments{ get; set; }
-    public DbSet<CourseUser> CourseUsers { get; set; }
-    public DbSet<Template> Templates { get; set; }
-    public DbSet<Purchase> Purchases { get; set; }
-    public DbSet<UserTemplate> UserTemplates { get; set; }
-    public DbSet<PurchaseRequest> PurchaseRequests { get; set; }
+    public DbSet<ConsultationRequest> ConsultationRequests { get; set; }
+    public DbSet<ContentBlock> ContentBlocks { get; set; }
+    public DbSet<CourseDocument> CourseDocuments { get; set; }
     public DbSet<CourseOutline> CourseOutlines { get; set; }
     public DbSet<CourseReview> CourseReviews { get; set; }
+    public DbSet<Course> Courses { get; set; }
+    public DbSet<CourseUser> CourseUsers { get; set; }
+    public DbSet<CourseVideo> CourseVideos { get; set; }
+    public DbSet<Instructor> Instructors { get; set; }
     public DbSet<KnowledgeHub> KnowledgeHubs { get; set; }
     public DbSet<KnowledgeHubSection> KnowledgeHubSections { get; set; }
-    public DbSet<ContentBlock> ContentBlocks { get; set; }
-    public DbSet<PageContent> PageContents { get; set; }
     public DbSet<MediaFile> MediaFiles { get; set; }
+    public DbSet<PageContent> PageContents { get; set; }
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    public DbSet<PurchaseRequest> PurchaseRequests { get; set; }
+    public DbSet<Purchase> Purchases { get; set; }
+    public DbSet<Template> Templates { get; set; }
+    public DbSet<Testimonial> Testimonials { get; set; }
+    public virtual DbSet<User> Users { get; set; }
+    public DbSet<UserTemplate> UserTemplates { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
     }
-
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,7 +106,7 @@ public partial class EdgepmoDbContext : DbContext
             .HasOne(c => c.Instructor)
             .WithMany(i => i.Courses)
             .HasForeignKey(c => c.InstructorId);
-        
+
         modelBuilder.Entity<Testimonial>()
             .HasOne(t => t.Course)
             .WithMany(c => c.Testimonials)
@@ -116,7 +116,7 @@ public partial class EdgepmoDbContext : DbContext
             .HasOne(c => c.Course)
             .WithMany(c => c.Certificates)
             .HasForeignKey(c => c.CourseId);
-            
+
         // ===== CourseVideo CONFIGURATION =====
         modelBuilder.Entity<CourseVideo>(entity =>
         {
@@ -196,6 +196,17 @@ public partial class EdgepmoDbContext : DbContext
                   .WithMany(u => u.CourseUsers)
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== Consultation Requests CONFIGURATION =====
+        modelBuilder.Entity<ConsultationRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.IsConsultant).HasDefaultValue(false);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // ===== Course CONFIGURATION =====
