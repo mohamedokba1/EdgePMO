@@ -225,6 +225,53 @@ namespace EdgePMO.API.Services
             return Task.FromResult(response);
         }
 
+        public async Task<Response> ListUploadsAssetsAsync()
+        {
+            Response response = new Response();
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string uploadsPath = Path.Combine("/var/www/", uploadsRelative);
+
+            if (!Directory.Exists(uploadsPath))
+            {
+                response.IsSuccess = true;
+                response.Message = "No assets found.";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("assets", JsonSerializer.SerializeToNode(Array.Empty<object>()));
+                return response;
+            }
+
+            // Get all files recursively
+            var files = Directory.EnumerateFiles(uploadsPath, "*", SearchOption.AllDirectories).ToList();
+
+            // Get all media files from DB
+            List<MediaFile>? dbFiles = await _context.MediaFiles
+                                                .AsNoTracking()
+                                                .ToListAsync();
+
+            // Build result list
+            var assets = files.Select(file =>
+            {
+                string fileName = Path.GetFileName(file);
+                string extension = Path.GetExtension(file);
+                var dbEntry = dbFiles.FirstOrDefault(mf => mf.FileName == fileName && mf.Extension == extension);
+
+                return new
+                {
+                    Id = dbEntry?.Id,
+                    FileName = fileName,
+                    Extension = extension,
+                    Path = file,
+                    ExistsInDb = dbEntry != null
+                };
+            }).ToList();
+
+            response.IsSuccess = true;
+            response.Message = "Assets retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("assets", JsonSerializer.SerializeToNode(assets));
+            return response;
+        }
+
         public string SanitizePath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))

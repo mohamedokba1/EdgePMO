@@ -23,10 +23,28 @@ namespace EdgePMO.API.Controllers
             _context = context;
         }
 
+        [HttpDelete("assets")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> DeleteAsset([FromQuery] string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains(".."))
+            {
+                return StatusCode(400, new Response
+                {
+                    IsSuccess = false,
+                    Message = "Invalid filename",
+                    Code = HttpStatusCode.BadRequest
+                });
+            }
+
+            Response response = await _contentServices.DeleteAssetAsync(fileName);
+            return StatusCode((int)response.Code, response);
+        }
+
         [HttpGet("assets")]
         public async Task<IActionResult> ListAssets()
         {
-            Response response = await _contentServices.ListAssetsAsync();
+            Response response = await _contentServices.ListUploadsAssetsAsync();
             return StatusCode((int)response.Code, response);
         }
 
@@ -34,6 +52,22 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> ListCoursesAssets()
         {
             Response response = await _contentServices.ListCoursesAssetsAsync();
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("upload-stream")]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> Upload([FromQuery] string fileName)
+        {
+            Response response = new Response();
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                response.IsSuccess = false;
+                response.Message = "File name is required";
+                response.Code = HttpStatusCode.BadRequest;
+                return StatusCode((int)response.Code, response);
+            }
+            response = await _contentServices.UploadMediaStreamAsync(Request, fileName);
             return StatusCode((int)response.Code, response);
         }
 
@@ -57,41 +91,6 @@ namespace EdgePMO.API.Controllers
                 return StatusCode((int)response.Code, response);
             }
             response = await _contentServices.UploadMediaAsync(file, path);
-            return StatusCode((int)response.Code, response);
-        }
-
-        [HttpPost("upload-stream")]
-        [DisableRequestSizeLimit]
-        public async Task<IActionResult> Upload([FromQuery] string fileName)
-        {
-            Response response = new Response();
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                response.IsSuccess = false;
-                response.Message = "File name is required";
-                response.Code = HttpStatusCode.BadRequest;
-                return StatusCode((int)response.Code, response);
-            }
-            response = await _contentServices.UploadMediaStreamAsync(Request, fileName);
-            return StatusCode((int)response.Code, response);
-          
-        }
-
-        [HttpDelete("assets")]
-        [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> DeleteAsset([FromQuery] string fileName)
-        {
-            if (string.IsNullOrWhiteSpace(fileName) || fileName.Contains(".."))
-            {
-                return StatusCode(400, new Response
-                {
-                    IsSuccess = false,
-                    Message = "Invalid filename",
-                    Code = HttpStatusCode.BadRequest
-                });
-            }
-
-            Response response = await _contentServices.DeleteAssetAsync(fileName);
             return StatusCode((int)response.Code, response);
         }
     }

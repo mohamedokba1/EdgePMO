@@ -1,4 +1,5 @@
-﻿using EdgePMO.API.Models;
+﻿using EdgePMO.API.Dtos.Courses;
+using EdgePMO.API.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace EdgePMO.API.Dtos
@@ -53,5 +54,7 @@ namespace EdgePMO.API.Dtos
         public List<string>? WhoShouldAttend { get; set; } = new();
 
         public List<string>? Requirements { get; set; } = new();
+
+        public List<CourseContentUpdateDto> Content { get; set; }
     }
 }

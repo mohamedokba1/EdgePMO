@@ -32,7 +32,7 @@ namespace EdgePMO.API.Migrations
 
             // Step 5: Alter columns
             migrationBuilder.AlterColumn<Guid>(
-                name: "CourseVideoId",
+                name: "Id",
                 table: "CourseVideos",
                 type: "uuid",
                 nullable: false,
@@ -199,7 +199,7 @@ namespace EdgePMO.API.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<Guid>(
-                name: "CourseVideoId",
+                name: "Id",
                 table: "CourseVideos",
                 type: "uuid",
                 nullable: false,

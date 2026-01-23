@@ -16,7 +16,7 @@ namespace EdgePMO.API.Migrations
                 newName: "Url");
 
             migrationBuilder.RenameColumn(
-                name: "CourseVideoId",
+                name: "Id",
                 table: "CourseVideos",
                 newName: "Id");
         }
@@ -32,7 +32,7 @@ namespace EdgePMO.API.Migrations
             migrationBuilder.RenameColumn(
                 name: "Id",
                 table: "CourseVideos",
-                newName: "CourseVideoId");
+                newName: "Id");
         }
     }
 }

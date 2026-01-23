@@ -652,6 +652,137 @@ namespace EdgePMO.API.Services
             if (dto.Requirements != null && dto.Requirements.Count > 0)
                 existing.Requirements = dto.Requirements;
 
+            if (dto.Content != null)
+            {
+                Dictionary<Guid, CourseOutline>? dbOutlines = existing.CourseOutline.ToDictionary(o => o.Id, o => o);
+
+                foreach (CourseContentUpdateDto outlineDto in dto.Content)
+                {
+                    CourseOutline? outline;
+                    if (outlineDto.Id != Guid.Empty && dbOutlines.TryGetValue(outlineDto.Id, out outline))
+                    {
+                        if (!string.IsNullOrEmpty(outlineDto.Title))
+                            outline.Title = outlineDto.Title;
+
+                        if (outlineDto.Order.HasValue)
+                            outline.Order = outlineDto.Order.Value;
+
+                        Dictionary<Guid, CourseVideo>? dbVideos = outline.Videos.ToDictionary(v => v.Id, v => v);
+                        List<CourseVideoUpdateDto>? dtoVideos = outlineDto.Videos ?? new List<CourseVideoUpdateDto>();
+
+                        // Update or add videos
+                        foreach (CourseVideoUpdateDto videoDto in dtoVideos)
+                        {
+                            if (videoDto is { } && dbVideos.TryGetValue(videoDto.Id, out CourseVideo dbVideo))
+                            {
+                                MediaFile? mediaFile = await _context.MediaFiles.FindAsync(videoDto?.Url);
+                                if (mediaFile != null)
+                                {
+                                    dbVideo.Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+                                }
+                                dbVideo.Title = videoDto.Title;
+                                dbVideo.Description = videoDto.Description;
+                                dbVideo.DurationMinutes = videoDto.DurationMinutes.HasValue ? videoDto.DurationMinutes.Value : dbVideo.DurationMinutes;
+                                dbVideo.Order = videoDto.Order.HasValue ? videoDto.Order.Value : dbVideo.Order;
+                            }
+                            else
+                            {
+                                CourseVideo newCourseVideo = new CourseVideo();
+                                newCourseVideo.Id = Guid.NewGuid();
+                                newCourseVideo.Title = videoDto.Title;
+                                newCourseVideo.Description = videoDto.Description;
+                                newCourseVideo.DurationMinutes = videoDto.DurationMinutes.HasValue ? videoDto.DurationMinutes.Value : 0;
+                                newCourseVideo.Order = videoDto.Order.HasValue ? videoDto.Order.Value : 1;
+                                newCourseVideo.CreatedAt = DateTime.UtcNow;
+
+                                MediaFile? mediaFile = await _context.MediaFiles.FindAsync(videoDto?.Url);
+                                if (mediaFile != null)
+                                {
+                                    newCourseVideo.Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+                                }
+
+                                outline.Videos.Add(newCourseVideo);
+                            }
+                        }
+
+                        HashSet<Guid>? dtoVideoIds = dtoVideos.Select(v => v.Id).ToHashSet();
+                        outline.Videos.RemoveAll(v => v.Id != Guid.Empty && !dtoVideoIds.Contains(v.Id));
+
+                        // --- Documents ---
+                        Dictionary<Guid, CourseDocument>? dbDocs = outline.Documents.ToDictionary(d => d.CourseDocumentId, d => d);
+                        List<CourseDocumentUpdateDto>? dtoDocs = outlineDto.Documents ?? new List<CourseDocumentUpdateDto>();
+
+                        foreach (CourseDocumentUpdateDto docDto in dtoDocs)
+                        {
+                            if (docDto is { } && docDto.Id.HasValue && dbDocs.TryGetValue(docDto.Id.Value, out CourseDocument? dbDoc))
+                            {
+                                MediaFile? mediaFile = await _context.MediaFiles.FindAsync(docDto.Url);
+                                if (mediaFile != null)
+                                {
+                                    dbDoc.DocumentUrl = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+                                }
+                                dbDoc.Title = docDto.Title;
+                                dbDoc.Description = docDto.Description;
+                            }
+                            else
+                            {
+                                CourseDocument newDoc = new CourseDocument();
+                                MediaFile? mediaFile = await _context.MediaFiles.FindAsync(docDto.Url);
+                                if (mediaFile != null)
+                                {
+                                    newDoc.DocumentUrl = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
+                                }
+                                newDoc.Title = docDto.Title;
+                                newDoc.Description = docDto.Description;
+                                newDoc.CreatedAt = DateTime.UtcNow;
+                                newDoc.CourseDocumentId = Guid.NewGuid();
+                                newDoc.CourseOutlineId = outline.Id;
+                                // Add new document
+                                outline.Documents.Add(newDoc);
+                            }
+                        }
+                        HashSet<Guid?>? dtoDocIds = dtoDocs.Select(d => d.Id).ToHashSet();
+                        outline.Documents.RemoveAll(d => d.CourseDocumentId != Guid.Empty && !dtoDocIds.Contains(d.CourseDocumentId));
+                    }
+                    else
+                    {
+                        // Add new outline
+                        CourseOutline? newOutline = new CourseOutline
+                        {
+                            Id = Guid.NewGuid(),
+                            CourseId = existing.CourseId,
+                            Title = outlineDto.Title,
+                            Order = outlineDto.Order.HasValue ? outlineDto.Order.Value : 1,
+                            CreatedAt = DateTime.UtcNow,
+                            Videos = outlineDto.Videos?.Select(v => new CourseVideo
+                            {
+                                Id = Guid.NewGuid(),
+                                CourseOutlineId = outlineDto.Id,
+                                Title = v.Title,
+                                Description = v.Description,
+                                Url = GetFilePathFromMediaFileId(v.Url),
+                                DurationMinutes = v.DurationMinutes.HasValue ? v.DurationMinutes.Value : 0,
+                                Order = v.Order.HasValue ? v.Order.Value : 0,
+                                CreatedAt = DateTime.UtcNow
+                            }).ToList() ?? new List<CourseVideo>(),
+                            Documents = outlineDto.Documents?.Select(d => new CourseDocument
+                            {
+                                CourseDocumentId = Guid.NewGuid(),
+                                CourseOutlineId = outlineDto.Id,
+                                Title = d.Title,
+                                Description = d.Description,
+                                DocumentUrl = GetFilePathFromMediaFileId(d.Url),
+                                CreatedAt = DateTime.UtcNow
+                            }).ToList() ?? new List<CourseDocument>()
+                        };
+                        existing.CourseOutline.Add(newOutline);
+                    }
+                }
+
+                // Remove outlines not in DTO
+                HashSet<Guid>? dtoOutlineIds = dto.Content.Select(o => o.Id).ToHashSet();
+                existing.CourseOutline.RemoveAll(o => o.Id != Guid.Empty && !dtoOutlineIds.Contains(o.Id));
+            }
             existing.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -668,7 +799,7 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
 
-            CourseVideo? existing = await _context.CourseVideos.FindAsync(dto.CourseVideoId);
+            CourseVideo? existing = await _context.CourseVideos.FindAsync(dto.Id);
             if (existing == null)
             {
                 response.IsSuccess = false;
@@ -683,8 +814,8 @@ namespace EdgePMO.API.Services
             if (!string.IsNullOrEmpty(dto.Description))
                 existing.Description = dto.Description.Trim();
 
-            if (!string.IsNullOrEmpty(dto.Url))
-                existing.Url = dto.Url.Trim();
+            //if (!string.IsNullOrEmpty(dto.Url))
+            //    existing.Url = dto.Url.Trim();
 
             if (dto.DurationMinutes.HasValue)
                 existing.DurationMinutes = dto.DurationMinutes.Value;
@@ -698,6 +829,14 @@ namespace EdgePMO.API.Services
             response.Message = "Course video updated.";
             response.Code = HttpStatusCode.OK;
             return response;
+        }
+
+        private string? GetFilePathFromMediaFileId(Guid? mediaFileId)
+        {
+            if (!mediaFileId.HasValue)
+                return null;
+            MediaFile? mediaFile = _context.MediaFiles.Find(mediaFileId.Value);
+            return mediaFile?.FilePath?.Replace("\\", "/").Trim() ?? null;
         }
     }
 }
