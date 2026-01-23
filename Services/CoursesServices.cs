@@ -659,7 +659,7 @@ namespace EdgePMO.API.Services
                 foreach (CourseContentUpdateDto outlineDto in dto.Content)
                 {
                     CourseOutline? outline;
-                    if (outlineDto.Id != Guid.Empty && dbOutlines.TryGetValue(outlineDto.Id, out outline))
+                    if (outlineDto.Id != Guid.Empty && outlineDto.Id.HasValue && dbOutlines.TryGetValue(outlineDto.Id.Value, out outline))
                     {
                         if (!string.IsNullOrEmpty(outlineDto.Title))
                             outline.Title = outlineDto.Title;
@@ -673,7 +673,7 @@ namespace EdgePMO.API.Services
                         // Update or add videos
                         foreach (CourseVideoUpdateDto videoDto in dtoVideos)
                         {
-                            if (videoDto is { } && dbVideos.TryGetValue(videoDto.Id, out CourseVideo dbVideo))
+                            if (videoDto is { } && videoDto.Id.HasValue && dbVideos.TryGetValue(videoDto.Id.Value, out CourseVideo dbVideo))
                             {
                                 MediaFile? mediaFile = await _context.MediaFiles.FindAsync(videoDto?.Url);
                                 if (mediaFile != null)
@@ -705,8 +705,7 @@ namespace EdgePMO.API.Services
                             }
                         }
 
-                        HashSet<Guid>? dtoVideoIds = dtoVideos.Select(v => v.Id).ToHashSet();
-                        outline.Videos.RemoveAll(v => v.Id != Guid.Empty && !dtoVideoIds.Contains(v.Id));
+                        outline.Videos.RemoveAll(v => v.Id != null || v.Id != Guid.Empty);
 
                         // --- Documents ---
                         Dictionary<Guid, CourseDocument>? dbDocs = outline.Documents.ToDictionary(d => d.CourseDocumentId, d => d);
@@ -747,41 +746,56 @@ namespace EdgePMO.API.Services
                     else
                     {
                         // Add new outline
-                        CourseOutline? newOutline = new CourseOutline
-                        {
-                            Id = Guid.NewGuid(),
-                            CourseId = existing.CourseId,
-                            Title = outlineDto.Title,
-                            Order = outlineDto.Order.HasValue ? outlineDto.Order.Value : 1,
-                            CreatedAt = DateTime.UtcNow,
-                            Videos = outlineDto.Videos?.Select(v => new CourseVideo
+                        CourseOutline newOutline = new CourseOutline();
+
+                        newOutline.Id = Guid.NewGuid();
+                        newOutline.CourseId = existing.CourseId;
+                        newOutline.Title = outlineDto.Title;
+                        newOutline.Order = outlineDto.Order.HasValue ? outlineDto.Order.Value : 1;
+                        newOutline.CreatedAt = DateTime.UtcNow;
+
+                        // Videos
+                        newOutline.Videos = outlineDto.Videos != null
+                            ? outlineDto.Videos.Select(v =>
                             {
-                                Id = Guid.NewGuid(),
-                                CourseOutlineId = outlineDto.Id,
-                                Title = v.Title,
-                                Description = v.Description,
-                                Url = GetFilePathFromMediaFileId(v.Url),
-                                DurationMinutes = v.DurationMinutes.HasValue ? v.DurationMinutes.Value : 0,
-                                Order = v.Order.HasValue ? v.Order.Value : 0,
-                                CreatedAt = DateTime.UtcNow
-                            }).ToList() ?? new List<CourseVideo>(),
-                            Documents = outlineDto.Documents?.Select(d => new CourseDocument
+                                CourseVideo video = new CourseVideo();
+
+                                video.Id = Guid.NewGuid();
+                                video.CourseOutlineId = newOutline.Id;
+                                video.Title = v.Title;
+                                video.Description = v.Description;
+                                video.Url = GetFilePathFromMediaFileId(v.Url);
+                                video.DurationMinutes = v.DurationMinutes.HasValue ? v.DurationMinutes.Value : 0;
+                                video.Order = v.Order.HasValue ? v.Order.Value : 0;
+                                video.CreatedAt = DateTime.UtcNow;
+
+                                return video;
+                            }).ToList()
+                            : new List<CourseVideo>();
+
+                        // Documents
+                        newOutline.Documents = outlineDto.Documents != null
+                            ? outlineDto.Documents.Select(d =>
                             {
-                                CourseDocumentId = Guid.NewGuid(),
-                                CourseOutlineId = outlineDto.Id,
-                                Title = d.Title,
-                                Description = d.Description,
-                                DocumentUrl = GetFilePathFromMediaFileId(d.Url),
-                                CreatedAt = DateTime.UtcNow
-                            }).ToList() ?? new List<CourseDocument>()
-                        };
+                                CourseDocument document = new CourseDocument();
+
+                                document.CourseDocumentId = Guid.NewGuid();
+                                document.CourseOutlineId = newOutline.Id;
+                                document.Title = d.Title;
+                                document.Description = d.Description;
+                                document.DocumentUrl = GetFilePathFromMediaFileId(d.Url);
+                                document.CreatedAt = DateTime.UtcNow;
+
+                                return document;
+                            }).ToList()
+                            : new List<CourseDocument>();
                         existing.CourseOutline.Add(newOutline);
                     }
                 }
 
                 // Remove outlines not in DTO
-                HashSet<Guid>? dtoOutlineIds = dto.Content.Select(o => o.Id).ToHashSet();
-                existing.CourseOutline.RemoveAll(o => o.Id != Guid.Empty && !dtoOutlineIds.Contains(o.Id));
+
+                existing.CourseOutline.RemoveAll(o => o.Id != Guid.Empty || o.Id != null);
             }
             existing.UpdatedAt = DateTime.UtcNow;
 

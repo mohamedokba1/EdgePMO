@@ -6,8 +6,7 @@ namespace EdgePMO.API.Dtos.Courses
     {
         public List<CourseDocumentUpdateDto>? Documents { get; set; }
 
-        [Required]
-        public Guid Id { get; set; }
+        public Guid? Id { get; set; }
 
         [Range(1, 1000)]
         public int? Order { get; set; } = 1;

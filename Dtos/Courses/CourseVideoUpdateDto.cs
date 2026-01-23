@@ -4,8 +4,7 @@ namespace EdgePMO.API.Dtos
 {
     public record CourseVideoUpdateDto
     {
-        [Required(ErrorMessage = "Outline Id can not be null or empty")]
-        public Guid Id { get; init; }
+        public Guid? Id { get; init; }
 
         [StringLength(500)]
         public string? Title { get; init; }
