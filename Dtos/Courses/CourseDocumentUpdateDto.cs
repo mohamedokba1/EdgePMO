@@ -8,6 +8,6 @@ namespace EdgePMO.API.Dtos.Courses
         public Guid? Id { get; init; }
         public int? Order { get; init; }
         public string? Title { get; init; }
-        public Guid Url { get; init; }
+        public Guid? Url { get; init; }
     }
 }

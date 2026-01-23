@@ -43,7 +43,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Certificates");
+                    b.ToTable("Certificates", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.ConsultationRequest", b =>
@@ -85,7 +85,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ConsultationRequests");
+                    b.ToTable("ConsultationRequests", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.ContentBlock", b =>
@@ -114,7 +114,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("ContentBlocks");
+                    b.ToTable("ContentBlocks", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Course", b =>
@@ -204,7 +204,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("InstructorId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseDocument", b =>
@@ -243,7 +243,7 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("DocumentUrl")
                         .IsUnique();
 
-                    b.ToTable("CourseDocuments");
+                    b.ToTable("CourseDocuments", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseOutline", b =>
@@ -277,7 +277,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("CourseId", "Order");
 
-                    b.ToTable("CourseOutlines");
+                    b.ToTable("CourseOutlines", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseReview", b =>
@@ -322,7 +322,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("CourseReviews");
+                    b.ToTable("CourseReviews", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseUser", b =>
@@ -343,7 +343,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("CourseUsers");
+                    b.ToTable("CourseUsers", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
@@ -390,7 +390,7 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("CourseOutlineId", "Order")
                         .IsUnique();
 
-                    b.ToTable("CourseVideos");
+                    b.ToTable("CourseVideos", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Instructor", b =>
@@ -417,7 +417,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("InstructorId");
 
-                    b.ToTable("Instructors");
+                    b.ToTable("Instructors", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.KnowledgeHub", b =>
@@ -469,7 +469,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("KnowledgeHubs");
+                    b.ToTable("KnowledgeHubs", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.KnowledgeHubSection", b =>
@@ -494,7 +494,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("KnowledgeHubId");
 
-                    b.ToTable("KnowledgeHubSections");
+                    b.ToTable("KnowledgeHubSections", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.MediaFile", b =>
@@ -522,7 +522,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MediaFiles");
+                    b.ToTable("MediaFiles", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PageContent", b =>
@@ -554,7 +554,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PageContents");
+                    b.ToTable("PageContents", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PasswordResetToken", b =>
@@ -583,7 +583,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens");
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Purchase", b =>
@@ -659,7 +659,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Purchases");
+                    b.ToTable("Purchases", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PurchaseRequest", b =>
@@ -705,7 +705,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PurchaseRequests");
+                    b.ToTable("PurchaseRequests", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Template", b =>
@@ -771,7 +771,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Templates");
+                    b.ToTable("Templates", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Testimonial", b =>
@@ -801,7 +801,7 @@ namespace EdgePMO.API.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Testimonials");
+                    b.ToTable("Testimonials", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.User", b =>
@@ -961,7 +961,7 @@ namespace EdgePMO.API.Migrations
                     b.HasIndex("UserId", "TemplateId")
                         .IsUnique();
 
-                    b.ToTable("UserTemplates");
+                    b.ToTable("UserTemplates", (string)null);
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
