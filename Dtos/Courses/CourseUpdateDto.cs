@@ -15,15 +15,14 @@ namespace EdgePMO.API.Dtos
         [StringLength(2000)]
         public string? Description { get; set; }
 
-        [StringLength(10)]
+        [StringLength(5000)]
+        public string? Overview { get; set; }
+
         public string? Duration { get; set; }
 
         public double? Price { get; set; }
 
         public Guid? CoursePictureId { get; set; }
-
-        [StringLength(4000)]
-        public string? Overview { get; set; }
 
         [StringLength(4000)]
         public string? Subtitle { get; set; }
@@ -55,6 +54,6 @@ namespace EdgePMO.API.Dtos
 
         public List<string>? Requirements { get; set; } = new();
 
-        public List<CourseContentUpdateDto> Content { get; set; }
+        public List<CourseContentUpdateDto>? Content { get; set; }
     }
 }

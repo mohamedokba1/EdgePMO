@@ -33,29 +33,30 @@ namespace EdgePMO.API.Dtos
         [StringLength(10000)]
         public string? Overview { get; set; }
 
-        [MaxLength(20, ErrorMessage = "Maximum 20 learning points allowed")]
-        public List<string> WhatStudentsLearn { get; set; } = new List<string>();
+        [MaxLength(20)]
+        public List<string> WhatStudentsLearn { get; set; } = new();
 
-        [MaxLength(10, ErrorMessage = "Maximum 10 software requirements allowed")]
-        public List<string> SoftwareRequirements { get; set; } = new List<string>();
+        [MaxLength(10)]
+        public List<string> SoftwareUsed { get; set; } = new();
 
-        [MaxLength(15, ErrorMessage = "Maximum 15 requirements allowed")]
-        public List<string> Requirements { get; set; } = new List<string>();
+        [MaxLength(15)]
+        public List<string> Requirements { get; set; } = new();
 
-        [MaxLength(20, ErrorMessage = "Maximum 20 audience groups allowed")]
-        public List<string> WhoShouldAttend { get; set; } = new List<string>();
+        [MaxLength(20)]
+        public List<string> WhoShouldAttend { get; set; } = new();
 
         [Required]
-        [MinLength(1, ErrorMessage = "At least one course section is required")]
-        public List<CourseContentDto> Content { get; set; }
+        [MinLength(1)]
+        public List<CourseContentDto> Content { get; set; } = new();
 
         [Range(0, double.MaxValue)]
         [Required]
         public double Price { get; set; }
 
-        public double? Duration { get; set; }
+        // Match ReadDto
+        public string? Duration { get; set; }
 
-        public bool HasCertificate { get; set; } = false;
+        public bool Certification { get; set; } = false;
 
         [Required]
         public Guid InstructorId { get; set; }
