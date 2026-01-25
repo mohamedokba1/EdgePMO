@@ -56,7 +56,7 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url))
-                .ForMember(dest => dest.DurationSeconds, opt => opt.MapFrom(src => src.DurationMinutes))
+                .ForMember(dest => dest.DurationMinutes, opt => opt.MapFrom(src => src.DurationMinutes))
                 .ForMember(dest => dest.Order, opt => opt.MapFrom(src => src.Order));
 
             CreateMap<CourseDocument, CourseDocumentReadDto>()

@@ -11,7 +11,7 @@ namespace EdgePMO.API.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.RenameColumn(
-                name: "DurationSeconds",
+                name: "DurationMinutes",
                 table: "CourseVideos",
                 newName: "DurationMinutes");
         }
@@ -22,7 +22,7 @@ namespace EdgePMO.API.Migrations
             migrationBuilder.RenameColumn(
                 name: "DurationMinutes",
                 table: "CourseVideos",
-                newName: "DurationSeconds");
+                newName: "DurationMinutes");
         }
     }
 }

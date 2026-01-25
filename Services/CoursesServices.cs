@@ -105,7 +105,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = matchedRelative,
-                DurationMinutes = dto.DurationSeconds,
+                DurationMinutes = dto.DurationMinutes,
                 Order = dto.Order,
             };
 

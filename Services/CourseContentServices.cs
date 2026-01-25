@@ -47,7 +47,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim(),
-                DurationMinutes = dto.DurationSeconds,
+                DurationMinutes = dto.DurationMinutes,
                 Order = dto.Order
             };
 
@@ -187,7 +187,7 @@ namespace EdgePMO.API.Services
                 Title = dto.Title?.Trim(),
                 Description = dto.Description?.Trim(),
                 Url = mediaFile.FilePath?.Replace("\\", "/"),
-                DurationMinutes = dto.DurationSeconds,
+                DurationMinutes = dto.DurationMinutes,
                 Order = dto.Order
             };
 
@@ -420,7 +420,7 @@ namespace EdgePMO.API.Services
             existing.Title = dto.Title?.Trim();
             existing.Description = dto.Description?.Trim();
             existing.Url = mediaFile.FilePath?.Replace("\\", "/")?.Trim();
-            existing.DurationMinutes = dto.DurationSeconds;
+            existing.DurationMinutes = dto.DurationMinutes;
             existing.Order = dto.Order;
 
             await _context.SaveChangesAsync();

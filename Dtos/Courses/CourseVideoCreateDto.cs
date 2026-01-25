@@ -19,7 +19,7 @@ namespace EdgePMO.API.Dtos
         [Required(ErrorMessage = "Video url can not be null or empty")]
         public Guid Url { get; init; }
 
-        public int DurationSeconds { get; init; }
+        public int DurationMinutes { get; init; }
 
         [Required]
         [Range(1, 100, ErrorMessage = "Video order can not be null or empty")]
