@@ -209,6 +209,12 @@ public partial class EdgepmoDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
+        modelBuilder.Entity<PurchaseRequest>()
+             .HasOne(pr => pr.Course)
+             .WithMany()
+             .HasForeignKey(pr => pr.CourseId)
+             .OnDelete(DeleteBehavior.SetNull);
+
         // ===== Course CONFIGURATION =====
         modelBuilder.Entity<Course>(entity =>
         {
