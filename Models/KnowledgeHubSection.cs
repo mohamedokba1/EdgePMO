@@ -2,7 +2,7 @@
 {
     public class KnowledgeHubSection
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
         public Guid KnowledgeHubId { get; set; }
         public KnowledgeHub KnowledgeHub { get; set; } = null!;
         public string Heading { get; set; } = null!;

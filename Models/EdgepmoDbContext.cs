@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using System.Text.Json;
 
 namespace EdgePMO.API.Models;
@@ -489,13 +490,16 @@ public partial class EdgepmoDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<ContentBlock>(entity =>
+        modelBuilder.Entity<ContentBlock>(entity => { entity.HasKey(e => e.Id); entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()"); entity.Property(e => e.Type).IsRequired().HasMaxLength(50); entity.Property(e => e.Content).IsRequired(); entity.HasOne(b => b.Section).WithMany(s => s.Blocks).HasForeignKey(b => b.SectionId).OnDelete(DeleteBehavior.Cascade); });
+
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Content).IsRequired();
-        });
+            IMutableProperty? xminProperty = entityType.FindProperty("xmin");
+            if (xminProperty != null)
+            {
+                xminProperty.IsConcurrencyToken = false;
+            }
+        }
 
         OnModelCreatingPartial(modelBuilder);
     }

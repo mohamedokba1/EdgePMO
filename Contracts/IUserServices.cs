@@ -8,6 +8,8 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> Deactivate(Guid userId);
 
+        Task<Response> Delete(Guid userId);
+
         Task<Response> EmailVerification(VerifyEmailDto dto);
 
         Task<Response> GetAllUsersAsync();

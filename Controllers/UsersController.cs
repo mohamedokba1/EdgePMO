@@ -34,6 +34,14 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
+        [HttpDelete("delete/{id:guid}")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> DeleteUserByUserId(Guid id)
+        {
+            Response response = await _userServices.Delete(id);
+            return StatusCode((int)response.Code, response);
+        }
+
         [HttpGet]
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GetAll()

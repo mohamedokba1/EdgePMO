@@ -72,6 +72,30 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        public async Task<Response> Delete(Guid userId)
+        {
+            Response response = new Response();
+
+            User? user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "User deleted permanently!";
+            response.Code = HttpStatusCode.OK;
+
+            return response;
+        }
+
         public async Task<Response> EmailVerification(VerifyEmailDto dto)
         {
             Response response = new Response();

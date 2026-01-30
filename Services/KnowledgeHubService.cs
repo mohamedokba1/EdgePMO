@@ -212,33 +212,30 @@ namespace EdgePMO.API.Services
             knowledgeHub.IsActive = dto.IsActive.HasValue ? dto.IsActive.Value : knowledgeHub.IsActive;
             knowledgeHub.UpdatedAt = DateTime.UtcNow;
 
+            await _context.SaveChangesAsync();
             // Add new sections
             if (dto.Sections?.Any() == true)
             {
-                // Remove old sections
-                _context.KnowledgeHubSections.RemoveRange(knowledgeHub.Sections);
+                await _context.KnowledgeHubSections
+                    .Where(s => s.KnowledgeHubId == dto.Id)
+                    .ExecuteDeleteAsync();
+                _context.ChangeTracker.Clear();
 
-                foreach (CreateSectionDto sectionDto in dto.Sections.OrderBy(s => s.Order))
+                var hub = await _context.KnowledgeHubs.FindAsync(dto.Id);
+
+                foreach (var sectionDto in dto.Sections)
                 {
-                    KnowledgeHubSection? section = new KnowledgeHubSection
+                    hub!.Sections.Add(new KnowledgeHubSection
                     {
                         Heading = sectionDto.Heading,
-                        Order = sectionDto.Order
-                    };
-
-                    if (sectionDto.Blocks?.Any() == true)
-                    {
-                        foreach (CreateContentBlockDto blockDto in sectionDto.Blocks.OrderBy(b => b.Order))
+                        Order = sectionDto.Order,
+                        Blocks = sectionDto.Blocks.Select(b => new ContentBlock
                         {
-                            ContentBlock newContentBlock = new ContentBlock();
-                            newContentBlock.Type = blockDto.Type;
-                            newContentBlock.Order = blockDto.Order;
-                            newContentBlock.Content = ContentBlockSerializer.Serialize(blockDto.Content);
-                            section.Blocks.Add(newContentBlock);
-                        }
-                    }
-
-                    knowledgeHub.Sections.Add(section);
+                            Type = b.Type,
+                            Order = b.Order,
+                            Content = ContentBlockSerializer.Serialize(b.Content)
+                        }).ToList()
+                    });
                 }
             }
 

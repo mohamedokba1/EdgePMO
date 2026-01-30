@@ -2,7 +2,7 @@
 {
     public class ContentBlock
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
         public Guid SectionId { get; set; }
         public KnowledgeHubSection Section { get; set; } = null!;
         public string Type { get; set; } = null!;
