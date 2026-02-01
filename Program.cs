@@ -162,20 +162,41 @@ public class Program
             // For cookies
             options.Events = new JwtBearerEvents
             {
+                OnTokenValidated = async context =>
+                {
+                    EdgepmoDbContext? db = context.HttpContext.RequestServices.GetRequiredService<EdgepmoDbContext>();
+
+                    string? userIdClaim = context.Principal?.FindFirst("sub")?.Value;
+                    string? sessionClaim = context.Principal?.FindFirst("sessionId")?.Value;
+
+                    if (!Guid.TryParse(userIdClaim, out Guid userId) || !Guid.TryParse(sessionClaim, out Guid tokenSession))
+                    {
+                        context.Fail("Invalid token");
+                        return;
+                    }
+
+                    User? user = await db.Users
+                                        .AsNoTracking()
+                                        .FirstOrDefaultAsync(u => u.Id == userId);
+
+                    if (user == null || user.SessionId != tokenSession)
+                    {
+                        context.Fail("Session expired");
+                        return;
+                    }
+                },
+
+
                 OnMessageReceived = context =>
                 {
                     string? authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
 
                     if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-                    {
                         return Task.CompletedTask;
-                    }
 
                     string? cookie = context.Request.Cookies["accessToken"];
                     if (!string.IsNullOrEmpty(cookie))
-                    {
                         context.Token = cookie;
-                    }
 
                     return Task.CompletedTask;
                 }

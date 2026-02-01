@@ -99,7 +99,7 @@ namespace EdgePMO.API.Services
         public async Task<Response> EmailVerification(VerifyEmailDto dto)
         {
             Response response = new Response();
-            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower() == dto.Email.ToLower());
 
             if (user == null)
             {
@@ -253,6 +253,7 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            user.SessionId = Guid.NewGuid();
             string accessToken = _tokenService.GenerateAccessToken(user);
             RefreshToken? refreshToken = _tokenService.GenerateRefreshToken();
 
@@ -277,19 +278,28 @@ namespace EdgePMO.API.Services
         public async Task<Response> Logout(Guid userId)
         {
             Response response = new Response();
+
             User? user = await _context.Users.FindAsync(userId);
 
-            if (user != null)
+            if (user == null)
             {
-                user.RefreshTokenRevokedAt = DateTime.UtcNow.ToLocalTime();
-                user.RefreshToken = null;
-                user.UpdatedAt = DateTime.Now.ToLocalTime();
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
             }
+
+            user.SessionId = Guid.Empty;
+            user.RefreshTokenRevokedAt = DateTime.UtcNow;
+            user.RefreshToken = null;
+            user.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
             response.Message = "Logout successful";
             response.Code = HttpStatusCode.OK;
+
             return response;
         }
 
@@ -298,17 +308,19 @@ namespace EdgePMO.API.Services
             Response response = new Response();
             User? user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
 
-            if (user == null || user.RefreshTokenExpiresAt < DateTime.UtcNow || user.RefreshTokenRevokedAt != null)
+            if (user == null || user.RefreshTokenExpiresAt < DateTime.UtcNow || user.RefreshTokenRevokedAt != null || user.SessionId == Guid.Empty)
             {
                 response.IsSuccess = false;
                 response.Message = "Invalid refresh token";
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
-
+            user.RefreshTokenRevokedAt = DateTime.UtcNow;
+            user.SessionId = Guid.NewGuid();
             RefreshToken? newRefreshToken = _tokenService.GenerateRefreshToken();
             string? accessToken = _tokenService.GenerateAccessToken(user);
 
+            newRefreshToken.SessionId = user.SessionId;
             user.RefreshToken = newRefreshToken.Token;
             user.RefreshTokenCreatedAt = newRefreshToken.CreatedAt;
             user.RefreshTokenExpiresAt = newRefreshToken.ExpiresAt;
@@ -373,7 +385,7 @@ namespace EdgePMO.API.Services
 
         public async Task<bool> ResetPasswordAsync(PasswordResetDto dto)
         {
-            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
             if (user == null) return false;
 
             PasswordResetToken? tokenEntry = await _context.PasswordResetTokens
@@ -398,7 +410,7 @@ namespace EdgePMO.API.Services
         public async Task<Response> SendPasswordResetTokenAsync(string email)
         {
             Response response = new Response();
-            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
 
             if (user == null)
             {
@@ -430,7 +442,7 @@ namespace EdgePMO.API.Services
         public async Task<Response> SendVerificationMail(VerifyRequestDto request, string subject)
         {
             Response response = new Response();
-            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email == request.Email);
+            User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower() == request.Email.ToLower());
             if (user == null)
             {
                 response.IsSuccess = false;
