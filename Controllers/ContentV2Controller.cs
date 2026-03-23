@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EdgePMO.API.Controllers
 {
-    [Route("api/v2.0/[controller]")]
+    [Route("api/v2.0/content")]
     [ApiController]
     [Authorize(Policy = "Admin")]
     public class ContentV2Controller : ControllerBase

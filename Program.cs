@@ -249,6 +249,7 @@ public class Program
                     gracePeriod: TimeSpan.FromSeconds(30));
         });
 
+        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         WebApplication? app = builder.Build();
 
         using (IServiceScope? scope = app.Services.CreateScope())
