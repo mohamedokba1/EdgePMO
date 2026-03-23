@@ -10,7 +10,7 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
-    public string PhoneNo_1{ get; set; } = null!;
+    public string PhoneNo_1 { get; set; } = null!;
 
     public string PhoneNo_2 { get; set; } = null!;
 

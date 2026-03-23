@@ -1,0 +1,55 @@
+﻿using EdgePMO.API.Contracts;
+using EdgePMO.API.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace EdgePMO.API.Controllers
+{
+    [Route("api/v2.0/[controller]")]
+    [ApiController]
+    [Authorize(Policy = "Admin")]
+    public class ContentV2Controller : ControllerBase
+    {
+        private readonly IContentServices _contentServices;
+
+        public ContentV2Controller(IContentServices contentServices)
+        {
+            _contentServices = contentServices;
+        }
+
+        [HttpGet("physical-structure")]
+        public async Task<IActionResult> GetPhysicalStructure()
+        {
+            var response = await _contentServices.GetPhysicalStructureAsync();
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("folders")]
+        public async Task<IActionResult> CreateFolder([FromQuery] string folderName, [FromQuery] Guid? parentFolderId)
+        {
+            var response = await _contentServices.CreateFolderAsync(folderName, parentFolderId);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("upload-stream-to-folder")]
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> UploadToFolder([FromQuery] string fileName, [FromQuery] Guid? targetFolderId)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return BadRequest(new Response { IsSuccess = false, Message = "File name is required" });
+            }
+
+            var response = await _contentServices.UploadMediaStreamWithFolderIdAsync(Request, fileName, targetFolderId);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("sync-database")]
+        public async Task<IActionResult> SyncDatabaseWithFileSystem()
+        {
+            var response = await _contentServices.SyncFileSystemToDbAsync();
+            return StatusCode((int)response.Code, response);
+        }
+    }
+}

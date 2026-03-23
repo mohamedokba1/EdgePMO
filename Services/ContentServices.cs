@@ -4,6 +4,7 @@ using EdgePMO.API.Models;
 using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.IO.Enumeration;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -111,6 +112,7 @@ namespace EdgePMO.API.Services
         private readonly EdgepmoDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ContentSettings _settings;
+        //private readonly ILogger _logger;
 
         public ContentServices(IWebHostEnvironment env, IOptions<ContentSettings> settings, EdgepmoDbContext context)
         {
@@ -589,6 +591,289 @@ namespace EdgePMO.API.Services
         {
             string relativePath = fullPath.Replace(basePath, "").TrimStart(Path.DirectorySeparatorChar);
             return relativePath.Replace(Path.DirectorySeparatorChar, '/');
+        }
+
+        public async Task<Response> CreateFolderAsync(string folderName, Guid? parentFolderId)
+        {
+            Response? response = new Response();
+
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                return new Response { IsSuccess = false, Message = "Folder name is required", Code = HttpStatusCode.BadRequest };
+            }
+
+            bool exists = await _context.MediaFolders
+                .AnyAsync(f => f.Name.ToLower() == folderName.ToLower() && f.ParentFolderId == parentFolderId);
+
+            if (exists)
+            {
+                return new Response { IsSuccess = false, Message = "Folder already exists in this location", Code = HttpStatusCode.Conflict };
+            }
+
+            string parentPath = string.Empty;
+            if (parentFolderId.HasValue)
+            {
+                MediaFolder? parent = await _context.MediaFolders.FindAsync(parentFolderId);
+                parentPath = parent?.RelativePath ?? string.Empty;
+            }
+
+            string relativePath = Path.Combine(parentPath, folderName);
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string fullPath = Path.Combine("/var/www/", uploadsRelative, relativePath);
+
+            if (!Directory.Exists(fullPath))
+            {
+                Directory.CreateDirectory(fullPath);
+            }
+
+            MediaFolder? newFolder = new MediaFolder
+            {
+                Id = Guid.NewGuid(),
+                Name = folderName,
+                RelativePath = relativePath,
+                ParentFolderId = parentFolderId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.MediaFolders.Add(newFolder);
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Result.Add("folderId", JsonValue.Create(newFolder.Id));
+            response.Message = "Folder created successfully";
+            return response;
+        }
+
+        public async Task<bool> FolderExistsAsync(string folderName, Guid? parentFolderId)
+        {
+            if (string.IsNullOrWhiteSpace(folderName)) return false;
+            string sanitizedName = folderName.Trim();
+
+            MediaFolder? folderRecord = await _context.MediaFolders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(f =>
+                    f.Name.ToLower() == sanitizedName.ToLower() &&
+                    f.ParentFolderId == parentFolderId);
+
+            if (folderRecord == null)
+            {
+                return false;
+            }
+
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string fullPath = Path.Combine("/var/www/", uploadsRelative, folderRecord.RelativePath);
+
+            return Directory.Exists(fullPath);
+        }
+
+        public async Task<Response> UploadMediaStreamWithFolderIdAsync(HttpRequest request, string fileName, Guid? targetFolderId)
+        {
+            Response response = new Response();
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string baseWebRoot = Path.Combine("/var/www/", uploadsRelative);
+
+            string targetSubPath = string.Empty;
+            if (targetFolderId.HasValue)
+            {
+                MediaFolder? folder = await _context.MediaFolders
+                                                    .AsNoTracking()
+                                                    .FirstOrDefaultAsync(f => f.Id == targetFolderId.Value);
+
+                if (folder == null)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Target folder record not found in database.";
+                    response.Code = HttpStatusCode.NotFound;
+                    return response;
+                }
+                targetSubPath = folder.RelativePath;
+            }
+
+            string finalDirectory = Path.Combine(baseWebRoot, targetSubPath);
+            string fullPath = Path.Combine(finalDirectory, Path.GetFileName(fileName));
+
+            MediaFile? existingFile = await _context.MediaFiles
+                                                    .AsNoTracking()
+                                                    .FirstOrDefaultAsync(mf => mf.FileName == fileName && mf.FolderId == targetFolderId);
+
+            if (existingFile != null || File.Exists(fullPath))
+            {
+                response.IsSuccess = false;
+                response.Message = "File already exists in this location.";
+                response.Code = HttpStatusCode.Conflict;
+                return response;
+            }
+
+            if (!Directory.Exists(finalDirectory))
+            {
+                Directory.CreateDirectory(finalDirectory);
+            }
+            try
+            {
+                await using (FileStream? fileStream = new FileStream(
+                    fullPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 1024 * 1024,
+                    useAsync: true))
+                {
+                    await request.Body.CopyToAsync(fileStream);
+
+                    MediaFile? mediaFile = new MediaFile
+                    {
+                        Id = Guid.NewGuid(),
+                        FileName = fileName,
+                        FilePath = fullPath,
+                        Extension = Path.GetExtension(fileName).ToLowerInvariant(),
+                        FileSize = fileStream.Length,
+                        UploadedAt = DateTime.UtcNow,
+                        FolderId = targetFolderId
+                    };
+
+                    _context.MediaFiles.Add(mediaFile);
+                    await _context.SaveChangesAsync();
+
+                    response.IsSuccess = true;
+                    response.Message = "File streamed and saved successfully.";
+                    response.Code = HttpStatusCode.Created;
+                    response.Result.Add("fileId", JsonValue.Create(mediaFile.Id));
+                    response.Result.Add("path", JsonValue.Create(targetSubPath));
+                }
+            }
+            catch (Exception ex)
+            {
+                // Cleanup physical file if DB save or streaming fails
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+                //_logger.LogError(ex, "Error during file streaming upload with folder ID {FolderId}", targetFolderId);
+
+                response.IsSuccess = false;
+                response.Message = $"Something went wrong please try again later";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+
+            return response;
+        }
+
+        public async Task<Response> GetPhysicalStructureAsync()
+        {
+            Response response = new Response();
+            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            string rootPath = Path.Combine("/var/www/", uploadsRelative);
+
+            if (!Directory.Exists(rootPath))
+            {
+                response.IsSuccess = false;
+                response.Message = "Uploads directory does not exist on the server.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            FileSystemNodeDto? structure = CrawlDirectory(rootPath, rootPath);
+
+            response.IsSuccess = true;
+            response.Message = "Physical structure retrieved successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("assets", JsonSerializer.SerializeToNode(structure));
+
+            return await Task.FromResult(response);
+        }
+
+        private FileSystemNodeDto CrawlDirectory(string currentPath, string rootPath)
+        {
+            FileSystemNodeDto? node = new FileSystemNodeDto
+            {
+                Name = Path.GetFileName(currentPath),
+                RelativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/"),
+                IsFolder = true
+            };
+
+            foreach (string dir in Directory.EnumerateDirectories(currentPath))
+            {
+                node.Children.Add(CrawlDirectory(dir, rootPath));
+            }
+
+            foreach (string filePath in Directory.EnumerateFiles(currentPath))
+            {
+                FileInfo? fileInfo = new FileInfo(filePath);
+                node.Children.Add(new FileSystemNodeDto
+                {
+                    Name = fileInfo.Name,
+                    RelativePath = Path.GetRelativePath(rootPath, filePath).Replace("\\", "/"),
+                    IsFolder = false,
+                    Size = fileInfo.Length,
+                    Extension = fileInfo.Extension.ToLowerInvariant()
+                });
+            }
+
+            return node;
+        }
+
+        public async Task<Response> SyncFileSystemToDbAsync()
+        {
+            Response? response = new Response();
+            string uploadsRelative = _settings.UploadsRelative ?? "uploads";
+            string rootPath = Path.Combine("/var/www/", uploadsRelative);
+
+            if (!Directory.Exists(rootPath))
+                return new Response { IsSuccess = false, Message = "Root not found" };
+
+            await DeepSync(rootPath, null, rootPath);
+
+            response.IsSuccess = true;
+            response.Message = "Database synchronized with VPS filesystem successfully.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        private async Task DeepSync(string currentPath, Guid? parentId, string rootPath)
+        {
+            foreach (var dir in Directory.GetDirectories(currentPath))
+            {
+                string folderName = Path.GetFileName(dir);
+                string relPath = Path.GetRelativePath(rootPath, dir).Replace("\\", "/");
+
+                MediaFolder? folder = await _context.MediaFolders
+                                                    .FirstOrDefaultAsync(f => f.RelativePath == relPath);
+
+                if (folder == null)
+                {
+                    folder = new MediaFolder
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = folderName,
+                        RelativePath = relPath,
+                        ParentFolderId = parentId
+                    };
+                    _context.MediaFolders.Add(folder);
+                    await _context.SaveChangesAsync();
+                }
+
+                await DeepSync(dir, folder.Id, rootPath);
+            }
+
+            foreach (var file in Directory.GetFiles(currentPath))
+            {
+                string fileName = Path.GetFileName(file);
+                bool existing = await _context.MediaFiles
+                    .AnyAsync(f => f.FileName == fileName && f.FolderId == parentId);
+
+                if (!existing)
+                {
+                    FileInfo? info = new FileInfo(file);
+                    _context.MediaFiles.Add(new MediaFile
+                    {
+                        Id = Guid.NewGuid(),
+                        FileName = fileName,
+                        FilePath = file,
+                        FileSize = info.Length,
+                        Extension = info.Extension,
+                        FolderId = parentId,
+                        UploadedAt = DateTime.UtcNow
+                    });
+                }
+            }
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -7,6 +7,8 @@
         public string FilePath { get; set; } = null!;
         public string? Extension { get; set; }
         public long FileSize { get; set; }
+        public Guid? FolderId { get; set; }
+        public MediaFolder? Folder { get; set; }
         public DateTime UploadedAt { get; set; }
     }
 }

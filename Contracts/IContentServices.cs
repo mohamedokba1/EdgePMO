@@ -18,6 +18,17 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> UploadMediaAsync(IFormFile file, string? relativePath);
 
+        Task<Response> CreateFolderAsync(string folderName, Guid? parentFolderId);
+
+        Task<bool> FolderExistsAsync(string folderName, Guid? parentFolderId);
+
         Task<Response> UploadMediaStreamAsync(HttpRequest request, string fileName);
+
+        Task<Response> UploadMediaStreamWithFolderIdAsync(HttpRequest request, string fileName, Guid? targetFolderId);
+
+        Task<Response> GetPhysicalStructureAsync();
+
+        Task<Response> SyncFileSystemToDbAsync();
+
     }
 }

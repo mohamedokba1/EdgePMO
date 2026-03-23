@@ -36,6 +36,7 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<Testimonial> Testimonials { get; set; }
     public virtual DbSet<User> Users { get; set; }
     public DbSet<UserTemplate> UserTemplates { get; set; }
+    public DbSet<MediaFolder> MediaFolders { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -490,6 +491,46 @@ public partial class EdgepmoDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+
+        // ===== MediaFolder CONFIGURATION =====
+        modelBuilder.Entity<MediaFolder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.RelativePath).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Self-referencing relationship (Parent -> Subfolders)
+            entity.HasOne(e => e.ParentFolder)
+                .WithMany() // Or add ICollection<MediaFolder> SubFolders to your model
+                .HasForeignKey(e => e.ParentFolderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.ParentFolderId);
+            entity.HasIndex(e => new { e.Name, e.ParentFolderId }).IsUnique();
+        });
+
+        // ===== MediaFile CONFIGURATION =====
+        modelBuilder.Entity<MediaFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.FileName).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.FilePath).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.Extension).HasMaxLength(20);
+            entity.Property(e => e.UploadedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Link File to Folder
+            entity.HasOne(e => e.Folder)
+                .WithMany() // Or add ICollection<MediaFile> Files to MediaFolder model
+                .HasForeignKey(e => e.FolderId)
+                .OnDelete(DeleteBehavior.SetNull); // Keep file record even if folder is deleted
+
+            entity.HasIndex(e => e.FolderId);
+        });
         modelBuilder.Entity<ContentBlock>(entity => { entity.HasKey(e => e.Id); entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()"); entity.Property(e => e.Type).IsRequired().HasMaxLength(50); entity.Property(e => e.Content).IsRequired(); entity.HasOne(b => b.Section).WithMany(s => s.Blocks).HasForeignKey(b => b.SectionId).OnDelete(DeleteBehavior.Cascade); });
 
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
