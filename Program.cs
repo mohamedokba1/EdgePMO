@@ -71,6 +71,7 @@ public class Program
 
         builder.Services.Configure<VerificationSettings>(builder.Configuration.GetSection("VerificationSettings"));
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+        builder.Services.Configure<GoogleConfigurations>(builder.Configuration.GetSection("Google"));
         builder.Services.Configure<ContentSettings>(builder.Configuration.GetSection("Content"));
         builder.Services.AddTransient<GlobalExceptionMiddleware>();
         builder.Services.AddTransient<IEmailService, EmailService>();

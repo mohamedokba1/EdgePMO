@@ -1,5 +1,6 @@
 ﻿using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
+using EdgePMO.API.Dtos.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -168,6 +169,32 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
         {
             Response response = await _userServices.EmailVerification(dto);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            Response response = await _userServices.GoogleLoginAsync(dto.IdToken);
+
+            if (!response.IsSuccess || !response.Result.ContainsKey("accessToken"))
+            {
+                return StatusCode((int)response.Code, response);
+            }
+
+            string token = response.Result["accessToken"]?.ToString();
+
+            CookieOptions cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+                Expires = DateTimeOffset.UtcNow.AddHours(1)
+            };
+
+            Response.Cookies.Append("accessToken", token, cookieOptions);
             return StatusCode((int)response.Code, response);
         }
     }

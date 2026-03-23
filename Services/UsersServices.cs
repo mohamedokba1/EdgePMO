@@ -2,10 +2,14 @@
 using EdgePMO.API.Contracts;
 using EdgePMO.API.Dtos;
 using EdgePMO.API.Models;
+using EdgePMO.API.Settings;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using static Google.Apis.Auth.GoogleJsonWebSignature;
 
 namespace EdgePMO.API.Services
 {
@@ -16,14 +20,22 @@ namespace EdgePMO.API.Services
         private readonly IMapper _mapper;
         private readonly ITokenService _tokenService;
         private readonly IVerificationService _verificationService;
+        private readonly GoogleConfigurations _googleConfiguration;
 
-        public UsersServices(EdgepmoDbContext context, ITokenService tokenService, IVerificationService verificationService, IEmailService emailService, IMapper mapper)
+        public UsersServices(
+            EdgepmoDbContext context,
+            ITokenService tokenService,
+            IVerificationService verificationService,
+            IEmailService emailService,
+            IMapper mapper,
+            IOptions<GoogleConfigurations> googleConfiguration)
         {
             _context = context;
             _tokenService = tokenService;
             _verificationService = verificationService;
             _emailService = emailService;
             _mapper = mapper;
+            _googleConfiguration = googleConfiguration.Value;
         }
 
         public async Task<Response> Activate(Guid userId)
@@ -220,6 +232,81 @@ namespace EdgePMO.API.Services
             response.Result.Add("profile", JsonSerializer.SerializeToNode(profileDto));
 
             return response;
+        }
+
+        public async Task<Response> GoogleLoginAsync(string idToken)
+        {
+            Response response = new Response();
+            try
+            {
+                ValidationSettings? settings = new ValidationSettings()
+                {
+                    Audience = new List<string> { _googleConfiguration.ClientId }
+                };
+
+                Payload? payload = await ValidateAsync(idToken, settings);
+
+                User? user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower() == payload.Email.ToLower());
+
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = payload.Email,
+                        FirstName = payload.GivenName,
+                        LastName = payload.FamilyName,
+                        IsActive = true,
+                        EmailVerified = true, // Trusted from Google
+                        CreatedAt = DateTime.UtcNow,
+                        Role = "User"
+                    };
+                    _context.Users.Add(user);
+                }
+                else if (user.IsActive.HasValue && !user.IsActive.Value)
+                {
+                    response.IsSuccess = false;
+                    response.Message = "Account is inactive.";
+                    response.Code = HttpStatusCode.Unauthorized;
+                    return response;
+                }
+
+                // 3. Match your Session & Token Logic
+                user.SessionId = Guid.NewGuid();
+                string accessToken = _tokenService.GenerateAccessToken(user);
+                RefreshToken refreshToken = _tokenService.GenerateRefreshToken();
+
+                user.RefreshToken = refreshToken.Token;
+                user.RefreshTokenCreatedAt = refreshToken.CreatedAt;
+                user.RefreshTokenExpiresAt = refreshToken.ExpiresAt;
+                user.RefreshTokenRevokedAt = null;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "Login successfully with Google";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("accessToken", accessToken);
+                response.Result.Add("refreshToken", refreshToken.Token);
+                response.Result.Add("expiresAt", DateTime.UtcNow.AddMinutes(15).ToLocalTime());
+
+                return response;
+            }
+            catch (InvalidJwtException)
+            {
+                response.IsSuccess = false;
+                response.Message = "Invalid Google security token.";
+                response.Code = HttpStatusCode.Unauthorized;
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"Google login failed: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+                return response;
+            }
         }
 
         public async Task<Response> Login(LoginDto dto)

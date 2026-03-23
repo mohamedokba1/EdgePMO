@@ -29,5 +29,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> SendPasswordResetTokenAsync(string email);
 
         Task<Response> SendVerificationMail(VerifyRequestDto dto, string subject);
+
+        Task<Response> GoogleLoginAsync(string idToken);
     }
 }
