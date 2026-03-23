@@ -755,44 +755,105 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetPhysicalStructureAsync()
+        //public async Task<Response> GetPhysicalStructureAsync()
+        //{
+        //    Response response = new Response();
+        //    string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+        //    string rootPath = Path.Combine("/var/www/", uploadsRelative);
+
+        //    if (!Directory.Exists(rootPath))
+        //    {
+        //        response.IsSuccess = false;
+        //        response.Message = "Uploads directory does not exist on the server.";
+        //        response.Code = HttpStatusCode.NotFound;
+        //        return response;
+        //    }
+
+        //    FileSystemNodeDto? structure = CrawlDirectory(rootPath, rootPath);
+
+        //    response.IsSuccess = true;
+        //    response.Message = "Physical structure retrieved successfully.";
+        //    response.Code = HttpStatusCode.OK;
+        //    response.Result.Add("assets", JsonSerializer.SerializeToNode(structure));
+
+        //    return await Task.FromResult(response);
+        //}
+
+        //private FileSystemNodeDto CrawlDirectory(string currentPath, string rootPath)
+        //{
+        //    FileSystemNodeDto? node = new FileSystemNodeDto
+        //    {
+        //        Name = Path.GetFileName(currentPath),
+        //        RelativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/"),
+        //        IsFolder = true
+        //    };
+
+        //    foreach (string dir in Directory.EnumerateDirectories(currentPath))
+        //    {
+        //        node.Children.Add(CrawlDirectory(dir, rootPath));
+        //    }
+
+        //    foreach (string filePath in Directory.EnumerateFiles(currentPath))
+        //    {
+        //        FileInfo? fileInfo = new FileInfo(filePath);
+        //        node.Children.Add(new FileSystemNodeDto
+        //        {
+        //            Name = fileInfo.Name,
+        //            RelativePath = Path.GetRelativePath(rootPath, filePath).Replace("\\", "/"),
+        //            IsFolder = false,
+        //            Size = fileInfo.Length,
+        //            Extension = fileInfo.Extension.ToLowerInvariant()
+        //        });
+        //    }
+
+        //    return node;
+        //}
+
+
+        public async Task<Response> GetPhysicalStructureWithIdsAsync()
         {
-            Response response = new Response();
-            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+            Response? response = new Response();
+            string uploadsRelative = _settings.UploadsRelative ?? "uploads";
             string rootPath = Path.Combine("/var/www/", uploadsRelative);
 
             if (!Directory.Exists(rootPath))
             {
-                response.IsSuccess = false;
-                response.Message = "Uploads directory does not exist on the server.";
-                response.Code = HttpStatusCode.NotFound;
-                return response;
+                return new Response { IsSuccess = false, Message = "Uploads root not found", Code = HttpStatusCode.NotFound };
             }
 
-            FileSystemNodeDto? structure = CrawlDirectory(rootPath, rootPath);
+            Dictionary<string, Guid>? folderMap = await _context.MediaFolders
+                                                            .AsNoTracking()
+                                                            .ToDictionaryAsync(f => f.RelativePath.ToLower(), f => f.Id);
+
+            Dictionary<string, Guid>? fileMap = await _context.MediaFiles
+                                        .AsNoTracking()
+                                        .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.Id);
+
+
+            FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap);
 
             response.IsSuccess = true;
-            response.Message = "Physical structure retrieved successfully.";
-            response.Code = HttpStatusCode.OK;
-            response.Result.Add("assets", JsonSerializer.SerializeToNode(structure));
-
-            return await Task.FromResult(response);
+            response.Result.Add("assets", JsonSerializer.SerializeToNode(tree));
+            return response;
         }
 
-        private FileSystemNodeDto CrawlDirectory(string currentPath, string rootPath)
+        private FileSystemNodeDto CrawlWithIds(string currentPath, string rootPath, Dictionary<string, Guid> folderMap, Dictionary<string, Guid> fileMap)
         {
+            string relativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/");
+            if (relativePath == ".") relativePath = "";
+
             FileSystemNodeDto? node = new FileSystemNodeDto
             {
                 Name = Path.GetFileName(currentPath),
-                RelativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/"),
-                IsFolder = true
+                RelativePath = relativePath,
+                IsFolder = true,
+                Id = folderMap.TryGetValue(relativePath.ToLower(), out Guid folderId) ? folderId : null
             };
 
             foreach (string dir in Directory.EnumerateDirectories(currentPath))
             {
-                node.Children.Add(CrawlDirectory(dir, rootPath));
+                node.Children.Add(CrawlWithIds(dir, rootPath, folderMap, fileMap));
             }
-
             foreach (string filePath in Directory.EnumerateFiles(currentPath))
             {
                 FileInfo? fileInfo = new FileInfo(filePath);
@@ -802,7 +863,8 @@ namespace EdgePMO.API.Services
                     RelativePath = Path.GetRelativePath(rootPath, filePath).Replace("\\", "/"),
                     IsFolder = false,
                     Size = fileInfo.Length,
-                    Extension = fileInfo.Extension.ToLowerInvariant()
+                    Extension = fileInfo.Extension.ToLowerInvariant(),
+                    Id = fileMap.TryGetValue(filePath.ToLower(), out Guid fileId) ? fileId : null
                 });
             }
 
@@ -828,7 +890,7 @@ namespace EdgePMO.API.Services
 
         private async Task DeepSync(string currentPath, Guid? parentId, string rootPath)
         {
-            foreach (var dir in Directory.GetDirectories(currentPath))
+            foreach (string dir in Directory.GetDirectories(currentPath))
             {
                 string folderName = Path.GetFileName(dir);
                 string relPath = Path.GetRelativePath(rootPath, dir).Replace("\\", "/");
@@ -874,6 +936,66 @@ namespace EdgePMO.API.Services
                 }
             }
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Response> DeleteFolderAsync(Guid folderId)
+        {
+            Response? response = new Response();
+            string uploadsRelative = _settings.UploadsRelative ?? "uploads";
+            string baseWebRoot = Path.Combine("/var/www/", uploadsRelative);
+
+            MediaFolder? folder = await _context.MediaFolders.FindAsync(folderId);
+
+            if (folder == null)
+            {
+                return new Response
+                {
+                    IsSuccess = false,
+                    Message = "Folder not found in database.",
+                    Code = HttpStatusCode.NotFound
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(folder.RelativePath) || folder.RelativePath == "/" || folder.RelativePath == "courses")
+            {
+                return new Response
+                {
+                    IsSuccess = false,
+                    Message = "System protected folders cannot be deleted.",
+                    Code = HttpStatusCode.Forbidden
+                };
+            }
+
+            string physicalPath = Path.Combine(baseWebRoot, folder.RelativePath);
+
+            try
+            {
+                if (Directory.Exists(physicalPath))
+                {
+                    Directory.Delete(physicalPath, recursive: true);
+                }
+
+                _context.MediaFolders.Remove(folder);
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "Folder and all its contents deleted successfully.";
+                response.Code = HttpStatusCode.OK;
+            }
+            catch (IOException ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"File system error: A file might be in use. {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"An error occurred: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+
+            return response;
         }
     }
 }

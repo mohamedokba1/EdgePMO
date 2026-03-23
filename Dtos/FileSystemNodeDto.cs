@@ -4,6 +4,7 @@ namespace EdgePMO.API.Dtos
 {
     public class FileSystemNodeDto
     {
+        public Guid? Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string RelativePath { get; set; } = string.Empty;
         public bool IsFolder { get; set; }

@@ -8,7 +8,7 @@ namespace EdgePMO.API.Controllers
 {
     [Route("api/v2.0/content")]
     [ApiController]
-    [Authorize(Policy = "Admin")]
+    //[Authorize(Policy = "Admin")]
     public class ContentV2Controller : ControllerBase
     {
         private readonly IContentServices _contentServices;
@@ -21,7 +21,7 @@ namespace EdgePMO.API.Controllers
         [HttpGet("physical-structure")]
         public async Task<IActionResult> GetPhysicalStructure()
         {
-            var response = await _contentServices.GetPhysicalStructureAsync();
+            var response = await _contentServices.GetPhysicalStructureWithIdsAsync();
             return StatusCode((int)response.Code, response);
         }
 
@@ -29,6 +29,13 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> CreateFolder([FromQuery] string folderName, [FromQuery] Guid? parentFolderId)
         {
             var response = await _contentServices.CreateFolderAsync(folderName, parentFolderId);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpDelete("folders/{id}")]
+        public async Task<IActionResult> DeleteFolder(Guid id)
+        {
+            Response? response = await _contentServices.DeleteFolderAsync(id);
             return StatusCode((int)response.Code, response);
         }
 

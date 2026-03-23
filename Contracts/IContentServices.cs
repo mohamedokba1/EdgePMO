@@ -26,7 +26,9 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> UploadMediaStreamWithFolderIdAsync(HttpRequest request, string fileName, Guid? targetFolderId);
 
-        Task<Response> GetPhysicalStructureAsync();
+        Task<Response> GetPhysicalStructureWithIdsAsync();
+
+        Task<Response> DeleteFolderAsync(Guid folderId);
 
         Task<Response> SyncFileSystemToDbAsync();
 
