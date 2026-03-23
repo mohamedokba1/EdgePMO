@@ -640,6 +640,7 @@ namespace EdgePMO.API.Services
 
             response.IsSuccess = true;
             response.Result.Add("folderId", JsonValue.Create(newFolder.Id));
+            response.Code = HttpStatusCode.OK;
             response.Message = "Folder created successfully";
             return response;
         }
@@ -833,6 +834,8 @@ namespace EdgePMO.API.Services
             FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap);
 
             response.IsSuccess = true;
+            response.Code = HttpStatusCode.OK;
+            response.Message = "Physical structure with IDs retrieved successfully.";
             response.Result.Add("assets", JsonSerializer.SerializeToNode(tree));
             return response;
         }

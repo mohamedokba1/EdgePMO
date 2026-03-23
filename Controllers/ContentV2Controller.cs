@@ -21,7 +21,7 @@ namespace EdgePMO.API.Controllers
         [HttpGet("physical-structure")]
         public async Task<IActionResult> GetPhysicalStructure()
         {
-            var response = await _contentServices.GetPhysicalStructureWithIdsAsync();
+            Response? response = await _contentServices.GetPhysicalStructureWithIdsAsync();
             return StatusCode((int)response.Code, response);
         }
 
