@@ -355,6 +355,8 @@ namespace EdgePMO.API.Services
             }
 
             user.SessionId = Guid.NewGuid();
+            await _context.SaveChangesAsync();
+
             string accessToken = _tokenService.GenerateAccessToken(user);
             RefreshToken? refreshToken = _tokenService.GenerateRefreshToken();
 
