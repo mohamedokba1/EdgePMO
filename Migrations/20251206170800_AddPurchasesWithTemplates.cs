@@ -61,7 +61,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_Purchase_Template_TemplateId",
                         column: x => x.TemplateId,
                         principalTable: "Template",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_Purchase_users_UserId",
@@ -90,13 +90,13 @@ namespace EdgePMO.API.Migrations
                         name: "FK_UserTemplate_Purchase_PurchaseId",
                         column: x => x.PurchaseId,
                         principalTable: "Purchase",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_UserTemplate_Template_TemplateId",
                         column: x => x.TemplateId,
                         principalTable: "Template",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_UserTemplate_users_UserId",

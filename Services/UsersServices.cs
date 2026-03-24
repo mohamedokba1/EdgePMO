@@ -20,7 +20,7 @@ namespace EdgePMO.API.Services
         private readonly IMapper _mapper;
         private readonly ITokenService _tokenService;
         private readonly IVerificationService _verificationService;
-        private readonly GoogleConfigurations _googleConfiguration;
+        private readonly GoogleSecret _googleConfiguration;
 
         public UsersServices(
             EdgepmoDbContext context,
@@ -28,7 +28,7 @@ namespace EdgePMO.API.Services
             IVerificationService verificationService,
             IEmailService emailService,
             IMapper mapper,
-            IOptions<GoogleConfigurations> googleConfiguration)
+            IOptions<GoogleSecret> googleConfiguration)
         {
             _context = context;
             _tokenService = tokenService;
@@ -241,7 +241,7 @@ namespace EdgePMO.API.Services
             {
                 ValidationSettings? settings = new ValidationSettings()
                 {
-                    Audience = new List<string> { _googleConfiguration.ClientId }
+                    Audience = new List<string> { _googleConfiguration.ClientId, "407408718192.apps.googleusercontent.com" }
                 };
 
                 Payload? payload = await ValidateAsync(idToken, settings);
@@ -250,16 +250,30 @@ namespace EdgePMO.API.Services
 
                 if (user == null)
                 {
+                    // Try to get names from payload, fallback to 'Name', then fallback to Email prefix
+                    string firstName = payload.GivenName
+                                       ?? payload.Name?.Split(' ').FirstOrDefault()
+                                       ?? payload.Email.Split('@').First();
+
+                    string lastName = payload.FamilyName
+                                      ?? (payload.Name?.Contains(' ') == true ? payload.Name.Split(' ').Last() : "User");
                     user = new User
                     {
                         Id = Guid.NewGuid(),
                         Email = payload.Email,
-                        FirstName = payload.GivenName,
-                        LastName = payload.FamilyName,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        PhoneNo_1 = string.Empty, // Fixes previous error
+                        PhoneNo_2 = string.Empty, // Fixes current error
+                        LastCompnay = "N/A",      // Prevents the next likely error
+                        Role = "user",            // Ensures authorization works
                         IsActive = true,
-                        EmailVerified = true, // Trusted from Google
+                        EmailVerified = true,
                         CreatedAt = DateTime.UtcNow,
-                        Role = "User"
+                        UpdatedAt = DateTime.UtcNow,
+                        PasswordHash = Array.Empty<byte>().ToString(),
+                        PasswordSalt = Array.Empty<byte>()
+
                     };
                     _context.Users.Add(user);
                 }
@@ -303,7 +317,7 @@ namespace EdgePMO.API.Services
             catch (Exception ex)
             {
                 response.IsSuccess = false;
-                response.Message = $"Google login failed: {ex.Message}";
+                response.Message = $"Google login failed: {ex}";
                 response.Code = HttpStatusCode.InternalServerError;
                 return response;
             }

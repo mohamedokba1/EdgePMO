@@ -4,6 +4,7 @@ using EdgePMO.API.Dtos.Courses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Security.Claims;
 
 namespace EdgePMO.API.Controllers
 {
@@ -161,6 +162,18 @@ namespace EdgePMO.API.Controllers
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);
             return StatusCode((int)resp.Code, resp);
+        }
+
+        [HttpPatch("sync-progress")]
+        [Authorize]
+        public async Task<IActionResult> SyncProgress([FromBody] ProgressUpdateDto dto)
+        {
+            string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+            Guid userId = Guid.Parse(userIdClaim);
+            Response? response = await _courseServices.UpdateUserProgressAsync(userId, dto.CourseId, dto.Progress);
+            return StatusCode((int)response.Code, response);
         }
     }
 }

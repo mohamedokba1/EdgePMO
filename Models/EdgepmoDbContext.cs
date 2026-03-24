@@ -37,6 +37,7 @@ public partial class EdgepmoDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
     public DbSet<UserTemplate> UserTemplates { get; set; }
     public DbSet<MediaFolder> MediaFolders { get; set; }
+    public DbSet<PromoCode> PromoCodes { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -216,6 +217,21 @@ public partial class EdgepmoDbContext : DbContext
              .WithMany()
              .HasForeignKey(pr => pr.CourseId)
              .OnDelete(DeleteBehavior.SetNull);
+
+        // ===== Certificates CONFIGURATION =====
+        modelBuilder.Entity<Certificate>(entity =>
+        {
+            entity.HasKey(e => e.CertificateId);
+            entity.Property(e => e.CertificateId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.CourseId).IsRequired();
+            entity.Property(e => e.SerialNumber).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IssuedAt).IsRequired();
+
+            entity.HasOne(e => e.Course)
+                .WithMany()
+                .HasForeignKey(e => e.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // ===== Course CONFIGURATION =====
         modelBuilder.Entity<Course>(entity =>
@@ -510,6 +526,22 @@ public partial class EdgepmoDbContext : DbContext
 
             entity.HasIndex(e => e.ParentFolderId);
             entity.HasIndex(e => new { e.Name, e.ParentFolderId }).IsUnique();
+        });
+
+        // ===== Promo Codes CONFIGURATION =====
+        modelBuilder.Entity<PromoCode>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.MaxUsage).HasDefaultValue(100);
+            entity.Property(e => e.CurrentUsage).HasDefaultValue(0);
+            entity.Property(e => e.IsPercentage).HasDefaultValue(true);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.DiscountValue).HasPrecision(18, 2);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // ===== MediaFile CONFIGURATION =====

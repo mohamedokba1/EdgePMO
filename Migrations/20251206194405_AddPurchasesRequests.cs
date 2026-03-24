@@ -106,17 +106,17 @@ namespace EdgePMO.API.Migrations
             migrationBuilder.AddPrimaryKey(
                 name: "PK_UserTemplates",
                 table: "UsersPurchased",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Templates",
                 table: "Templates",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Purchases",
                 table: "Purchases",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.CreateTable(
                 name: "PurchaseRequests",
@@ -147,7 +147,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_PurchaseRequests_Templates_TemplateId",
                         column: x => x.TemplateId,
                         principalTable: "Templates",
-                        principalColumn: "Id");
+                        principalColumn: "CertificateId");
                     table.ForeignKey(
                         name: "FK_PurchaseRequests_users_UserId",
                         column: x => x.UserId,
@@ -184,7 +184,7 @@ namespace EdgePMO.API.Migrations
                 table: "Purchases",
                 column: "TemplateId",
                 principalTable: "Templates",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
@@ -200,7 +200,7 @@ namespace EdgePMO.API.Migrations
                 table: "UsersPurchased",
                 column: "PurchaseId",
                 principalTable: "Purchases",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
@@ -208,7 +208,7 @@ namespace EdgePMO.API.Migrations
                 table: "UsersPurchased",
                 column: "TemplateId",
                 principalTable: "Templates",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
@@ -330,17 +330,17 @@ namespace EdgePMO.API.Migrations
             migrationBuilder.AddPrimaryKey(
                 name: "PK_UserTemplate",
                 table: "UserTemplate",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Template",
                 table: "Template",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Purchase",
                 table: "Purchase",
-                column: "Id");
+                column: "CertificateId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Purchase_Courses_CourseId",
@@ -355,7 +355,7 @@ namespace EdgePMO.API.Migrations
                 table: "Purchase",
                 column: "TemplateId",
                 principalTable: "Template",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
@@ -371,7 +371,7 @@ namespace EdgePMO.API.Migrations
                 table: "UserTemplate",
                 column: "PurchaseId",
                 principalTable: "Purchase",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.SetNull);
 
             migrationBuilder.AddForeignKey(
@@ -379,7 +379,7 @@ namespace EdgePMO.API.Migrations
                 table: "UserTemplate",
                 column: "TemplateId",
                 principalTable: "Template",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(

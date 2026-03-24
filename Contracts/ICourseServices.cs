@@ -27,5 +27,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> UpdateAsync(CourseUpdateDto dto);
 
         Task<Response> UpdateCourseVideoAsync(CourseVideoUpdateDto dto);
+
+        Task<Response> UpdateUserProgressAsync(Guid userId, Guid courseId, double progress);
     }
 }

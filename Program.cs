@@ -71,7 +71,7 @@ public class Program
 
         builder.Services.Configure<VerificationSettings>(builder.Configuration.GetSection("VerificationSettings"));
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-        builder.Services.Configure<GoogleConfigurations>(builder.Configuration.GetSection("Google"));
+        builder.Services.Configure<GoogleSecret>(builder.Configuration.GetSection("Google"));
         builder.Services.Configure<ContentSettings>(builder.Configuration.GetSection("Content"));
         builder.Services.AddTransient<GlobalExceptionMiddleware>();
         builder.Services.AddTransient<IEmailService, EmailService>();
@@ -90,6 +90,8 @@ public class Program
         builder.Services.AddScoped<IKnowledgeHubService, KnowledgeHubService>();
         builder.Services.AddScoped<IPageContentServices, PageContentServices>();
         builder.Services.AddScoped<IConsultationRequestServices, ConsultationRequestServices>();
+        builder.Services.AddHttpClient<IPaymentServices, PaymentServices>();
+        builder.Services.AddScoped<IPromoCodeServices, PromoCodeServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {

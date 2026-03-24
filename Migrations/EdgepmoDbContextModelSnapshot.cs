@@ -26,7 +26,8 @@ namespace EdgePMO.API.Migrations
                 {
                     b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("CertificateDescription")
                         .IsRequired()
@@ -39,9 +40,22 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("CourseId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CourseId1")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("SerialNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.HasKey("CertificateId");
 
                     b.HasIndex("CourseId");
+
+                    b.HasIndex("CourseId1");
 
                     b.ToTable("Certificates");
                 });
@@ -632,6 +646,68 @@ namespace EdgePMO.API.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("EdgePMO.API.Models.PromoCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid?>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp without time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("CurrentUsage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("MaxUsage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("PromoCodes");
+                });
+
             modelBuilder.Entity("EdgePMO.API.Models.Purchase", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1016,10 +1092,14 @@ namespace EdgePMO.API.Migrations
             modelBuilder.Entity("EdgePMO.API.Models.Certificate", b =>
                 {
                     b.HasOne("EdgePMO.API.Models.Course", "Course")
-                        .WithMany("Certificates")
+                        .WithMany()
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EdgePMO.API.Models.Course", null)
+                        .WithMany("Certificates")
+                        .HasForeignKey("CourseId1");
 
                     b.Navigation("Course");
                 });
@@ -1157,6 +1237,21 @@ namespace EdgePMO.API.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EdgePMO.API.Models.PromoCode", b =>
+                {
+                    b.HasOne("EdgePMO.API.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId");
+
+                    b.HasOne("EdgePMO.API.Models.Template", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId");
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Template");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.Purchase", b =>

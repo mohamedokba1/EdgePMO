@@ -6,7 +6,7 @@ namespace EdgePMO.API.Dtos
     {
         public Guid CourseId { get; init; }
 
-        [Required(ErrorMessage = "Outline Id can not be null or empty")]
+        [Required(ErrorMessage = "Outline CertificateId can not be null or empty")]
         public Guid OutlineId { get; init; }
 
         [Required(ErrorMessage = "Video title can not be null or empty")]

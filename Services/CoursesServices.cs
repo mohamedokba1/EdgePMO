@@ -5,6 +5,7 @@ using EdgePMO.API.Dtos.Courses;
 using EdgePMO.API.Models;
 using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -797,6 +798,29 @@ namespace EdgePMO.API.Services
         public Task<Response> UpdateCourseVideoAsync(CourseVideoUpdateDto dto)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<Response> UpdateUserProgressAsync(Guid userId, Guid courseId, double progress)
+        {
+            Response response = new Response();
+
+            CourseUser? enrollment = await _context.CourseUsers
+                                                   .FirstOrDefaultAsync(cu => cu.UserId == userId && cu.CourseId == courseId);
+
+            if (enrollment == null)
+            {
+                return new Response { IsSuccess = false, Message = "Enrollment not found.", Code = HttpStatusCode.NotFound };
+            }
+
+            enrollment.Progress = progress;
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Progress synced successfully.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("newProgress", enrollment.Progress);
+
+            return response;
         }
 
         private async Task<string?> GetFilePathAsync(Guid mediaId)

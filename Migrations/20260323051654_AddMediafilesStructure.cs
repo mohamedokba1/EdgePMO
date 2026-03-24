@@ -50,7 +50,7 @@ namespace EdgePMO.API.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<Guid>(
-                name: "Id",
+                name: "CertificateId",
                 table: "MediaFiles",
                 type: "uuid",
                 nullable: false,
@@ -81,7 +81,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_MediaFolders_MediaFolders_ParentFolderId",
                         column: x => x.ParentFolderId,
                         principalTable: "MediaFolders",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -106,7 +106,7 @@ namespace EdgePMO.API.Migrations
                 table: "MediaFiles",
                 column: "FolderId",
                 principalTable: "MediaFolders",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.SetNull);
         }
 
@@ -166,7 +166,7 @@ namespace EdgePMO.API.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<Guid>(
-                name: "Id",
+                name: "CertificateId",
                 table: "MediaFiles",
                 type: "uuid",
                 nullable: false,

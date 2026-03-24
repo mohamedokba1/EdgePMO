@@ -51,7 +51,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.ConsultationRequest", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -81,14 +81,14 @@ namespace EdgePMO.API.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.ToTable("ConsultationRequests");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.ContentBlock", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -108,7 +108,7 @@ namespace EdgePMO.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("SectionId");
 
@@ -246,7 +246,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseOutline", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -269,7 +269,7 @@ namespace EdgePMO.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("CourseId");
 
@@ -280,7 +280,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseReview", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -314,7 +314,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("CourseId");
 
@@ -346,7 +346,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.CourseVideo", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -381,7 +381,7 @@ namespace EdgePMO.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("CourseOutlineId");
 
@@ -420,7 +420,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.KnowledgeHub", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -465,14 +465,14 @@ namespace EdgePMO.API.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.ToTable("KnowledgeHubs");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.KnowledgeHubSection", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -488,7 +488,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("KnowledgeHubId");
 
@@ -497,7 +497,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.MediaFile", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -518,14 +518,14 @@ namespace EdgePMO.API.Migrations
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.ToTable("MediaFiles");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PageContent", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -550,18 +550,18 @@ namespace EdgePMO.API.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.ToTable("PageContents");
                 });
 
             modelBuilder.Entity("EdgePMO.API.Models.PasswordResetToken", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CertificateId"));
 
                     b.Property<DateTime>("Expiration")
                         .HasColumnType("timestamp with time zone");
@@ -577,7 +577,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("UserId");
 
@@ -586,7 +586,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.Purchase", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -645,7 +645,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("CourseId");
 
@@ -662,7 +662,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.PurchaseRequest", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -695,7 +695,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("CourseId");
 
@@ -708,7 +708,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.Template", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -767,7 +767,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.ToTable("Templates");
                 });
@@ -804,7 +804,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.User", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
@@ -910,7 +910,7 @@ namespace EdgePMO.API.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.HasKey("Id")
+                    b.HasKey("CertificateId")
                         .HasName("users_pkey");
 
                     b.HasIndex(new[] { "Email" }, "users_email_key")
@@ -921,7 +921,7 @@ namespace EdgePMO.API.Migrations
 
             modelBuilder.Entity("EdgePMO.API.Models.UserTemplate", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CertificateId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -948,7 +948,7 @@ namespace EdgePMO.API.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("CertificateId");
 
                     b.HasIndex("PurchaseId");
 

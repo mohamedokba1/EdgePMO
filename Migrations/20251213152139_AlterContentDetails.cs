@@ -16,9 +16,9 @@ namespace EdgePMO.API.Migrations
                 newName: "Url");
 
             migrationBuilder.RenameColumn(
-                name: "Id",
+                name: "CertificateId",
                 table: "CourseVideos",
-                newName: "Id");
+                newName: "CertificateId");
         }
 
         /// <inheritdoc />
@@ -30,9 +30,9 @@ namespace EdgePMO.API.Migrations
                 newName: "VideoUrl");
 
             migrationBuilder.RenameColumn(
-                name: "Id",
+                name: "CertificateId",
                 table: "CourseVideos",
-                newName: "Id");
+                newName: "CertificateId");
         }
     }
 }

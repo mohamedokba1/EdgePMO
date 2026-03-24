@@ -32,7 +32,7 @@ namespace EdgePMO.API.Migrations
 
             // Step 5: Alter columns
             migrationBuilder.AlterColumn<Guid>(
-                name: "Id",
+                name: "CertificateId",
                 table: "CourseVideos",
                 type: "uuid",
                 nullable: false,
@@ -96,7 +96,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_CourseDocuments_CourseOutlines_CourseOutlineId",
                         column: x => x.CourseOutlineId,
                         principalTable: "CourseOutlines",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -129,7 +129,7 @@ namespace EdgePMO.API.Migrations
                 table: "CourseVideos",
                 column: "CourseOutlineId",
                 principalTable: "CourseOutlines",
-                principalColumn: "Id",
+                principalColumn: "CertificateId",
                 onDelete: ReferentialAction.Cascade);
         }
 
@@ -199,7 +199,7 @@ namespace EdgePMO.API.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<Guid>(
-                name: "Id",
+                name: "CertificateId",
                 table: "CourseVideos",
                 type: "uuid",
                 nullable: false,

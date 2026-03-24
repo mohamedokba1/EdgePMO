@@ -7,5 +7,7 @@
         public Course Course { get; set; }
         public string CertificateTitle { get; set; }
         public string CertificateDescription { get; set; }
+        public string SerialNumber { get; set; }
+        public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
     }
 }

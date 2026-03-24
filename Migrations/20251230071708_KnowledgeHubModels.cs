@@ -49,7 +49,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_KnowledgeHubSections_KnowledgeHubs_KnowledgeHubId",
                         column: x => x.KnowledgeHubId,
                         principalTable: "KnowledgeHubs",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -72,7 +72,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_ContentBlocks_KnowledgeHubSections_SectionId",
                         column: x => x.SectionId,
                         principalTable: "KnowledgeHubSections",
-                        principalColumn: "Id",
+                        principalColumn: "CertificateId",
                         onDelete: ReferentialAction.Cascade);
                 });
 

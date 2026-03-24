@@ -443,7 +443,7 @@ namespace EdgePMO.API.Services
                 response.IsSuccess = true;
                 response.Message = "File already exists";
                 response.Code = HttpStatusCode.OK;
-                response.Result.Add("Id", existingFile.Id);
+                response.Result.Add("CertificateId", existingFile.Id);
                 response.Result.Add("filename", existingFile.FileName);
                 response.Result.Add("path", existingFile.FilePath);
                 response.Result.Add("size", existingFile.FileSize);
@@ -466,7 +466,7 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Message = "File uploaded successfully";
             response.Code = HttpStatusCode.OK;
-            response.Result.Add("Id", mediaFile.Id);
+            response.Result.Add("CertificateId", mediaFile.Id);
             response.Result.Add("filename", fileName);
             response.Result.Add("path", fullPath);
             response.Result.Add("size", output.Length);
