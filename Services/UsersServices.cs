@@ -355,7 +355,6 @@ namespace EdgePMO.API.Services
             }
 
             user.SessionId = Guid.NewGuid();
-            await _context.SaveChangesAsync();
 
             string accessToken = _tokenService.GenerateAccessToken(user);
             RefreshToken? refreshToken = _tokenService.GenerateRefreshToken();
@@ -364,7 +363,7 @@ namespace EdgePMO.API.Services
             user.RefreshTokenCreatedAt = refreshToken.CreatedAt;
             user.RefreshTokenExpiresAt = refreshToken.ExpiresAt;
             user.RefreshTokenRevokedAt = null;
-            user.UpdatedAt = DateTime.Now.ToLocalTime();
+            user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

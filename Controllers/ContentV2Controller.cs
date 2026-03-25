@@ -8,7 +8,7 @@ namespace EdgePMO.API.Controllers
 {
     [Route("api/v2.0/content")]
     [ApiController]
-    //[Authorize(Policy = "Admin")]
+    [Authorize(Policy = "Admin")]
     public class ContentV2Controller : ControllerBase
     {
         private readonly IContentServices _contentServices;
@@ -55,7 +55,7 @@ namespace EdgePMO.API.Controllers
         [HttpPost("sync-database")]
         public async Task<IActionResult> SyncDatabaseWithFileSystem()
         {
-            var response = await _contentServices.SyncFileSystemToDbAsync();
+            Response? response = await _contentServices.SyncFileSystemToDbAsync();
             return StatusCode((int)response.Code, response);
         }
     }

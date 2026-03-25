@@ -12,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Sinks.PostgreSQL;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -143,6 +145,7 @@ public class Program
         builder.Services.AddSingleton(jwtSettings);
         builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
 
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -167,24 +170,36 @@ public class Program
             {
                 OnTokenValidated = async context =>
                 {
-                    EdgepmoDbContext? db = context.HttpContext.RequestServices.GetRequiredService<EdgepmoDbContext>();
+                    EdgepmoDbContext db = context.HttpContext.RequestServices.GetRequiredService<EdgepmoDbContext>();
 
-                    string? userIdClaim = context.Principal?.FindFirst("sub")?.Value;
-                    string? sessionClaim = context.Principal?.FindFirst("sessionId")?.Value;
+                    ClaimsPrincipal? claims = context.Principal;
 
-                    if (!Guid.TryParse(userIdClaim, out Guid userId) || !Guid.TryParse(sessionClaim, out Guid tokenSession))
+                    string? userIdStr = claims?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    string? sessionStr = claims?.FindFirst("sessionId")?.Value;
+
+                    if (string.IsNullOrWhiteSpace(userIdStr) || string.IsNullOrWhiteSpace(sessionStr))
                     {
-                        context.Fail("Invalid token");
+                        context.Fail("Invalid token claims.");
                         return;
                     }
 
-                    User? user = await db.Users
-                                        .AsNoTracking()
-                                        .FirstOrDefaultAsync(u => u.Id == userId);
-
-                    if (user == null || user.SessionId != tokenSession)
+                    if (!Guid.TryParse(userIdStr, out Guid userId) || !Guid.TryParse(sessionStr, out Guid tokenSessionId))
                     {
-                        context.Fail("Session expired");
+                        context.Fail("Malformed token claims.");
+                        return;
+                    }
+
+                    User? user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+                    if (user == null)
+                    {
+                        context.Fail("User not found.");
+                        return;
+                    }
+
+                    if (user.SessionId == Guid.Empty || user.SessionId != tokenSessionId)
+                    {
+                        context.Fail("Session expired.");
                         return;
                     }
                 },

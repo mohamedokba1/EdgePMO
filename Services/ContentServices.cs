@@ -819,7 +819,7 @@ namespace EdgePMO.API.Services
 
             if (!Directory.Exists(rootPath))
             {
-                return new Response { IsSuccess = false, Message = "Uploads root not found", Code = HttpStatusCode.NotFound };
+                return new Response { IsSuccess = false, Message = "Uploads root not found", Code = HttpStatusCode.BadRequest };
             }
 
             Dictionary<string, Guid>? folderMap = await _context.MediaFolders
@@ -917,7 +917,7 @@ namespace EdgePMO.API.Services
                 await DeepSync(dir, folder.Id, rootPath);
             }
 
-            foreach (var file in Directory.GetFiles(currentPath))
+            foreach (string file in Directory.GetFiles(currentPath))
             {
                 string fileName = Path.GetFileName(file);
                 bool existing = await _context.MediaFiles
