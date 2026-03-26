@@ -3,6 +3,7 @@ using EdgePMO.API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace EdgePMO.API.Controllers
 {
@@ -56,6 +57,35 @@ namespace EdgePMO.API.Controllers
         public async Task<IActionResult> SyncDatabaseWithFileSystem()
         {
             Response? response = await _contentServices.SyncFileSystemToDbAsync();
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpDelete("files/{fileId}")]
+        public async Task<IActionResult> DeleteFile(Guid fileId)
+        {
+            Response? response = await _contentServices.DeleteFileAsync(fileId);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPatch("rename/{id}")]
+        public async Task<IActionResult> Rename(Guid id, [FromQuery] string newName) 
+        {
+            if (string.IsNullOrWhiteSpace(newName))
+                return BadRequest(new Response
+                {
+                    IsSuccess = false,
+                    Message = "New name parameter is required.",
+                    Code = HttpStatusCode.BadRequest
+                });
+
+            Response? response = await _contentServices.RenameContentAsync(id, newName);
+            return StatusCode((int)response.Code, response);
+        }
+
+        [HttpPost("move/{id}")]
+        public async Task<IActionResult> Move(Guid id, [FromQuery] Guid? newParentFolderId)
+        {
+            Response? response = await _contentServices.MoveContentAsync(id, newParentFolderId);
             return StatusCode((int)response.Code, response);
         }
     }

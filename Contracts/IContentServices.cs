@@ -30,6 +30,12 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> DeleteFolderAsync(Guid folderId);
 
+        Task<Response> DeleteFileAsync(Guid fileId);
+
+        Task<Response> RenameContentAsync(Guid id, string newName);
+
+        Task<Response> MoveContentAsync(Guid id, Guid? newParentFolderId);
+
         Task<Response> SyncFileSystemToDbAsync();
 
     }

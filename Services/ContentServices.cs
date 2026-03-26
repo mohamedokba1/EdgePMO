@@ -4,11 +4,11 @@ using EdgePMO.API.Models;
 using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.IO.Enumeration;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EdgePMO.API.Services
 {
@@ -110,13 +110,10 @@ namespace EdgePMO.API.Services
         };
 
         private readonly EdgepmoDbContext _context;
-        private readonly IWebHostEnvironment _env;
         private readonly ContentSettings _settings;
-        //private readonly ILogger _logger;
 
-        public ContentServices(IWebHostEnvironment env, IOptions<ContentSettings> settings, EdgepmoDbContext context)
+        public ContentServices(IOptions<ContentSettings> settings, EdgepmoDbContext context)
         {
-            _env = env;
             _settings = settings.Value;
             _context = context;
         }
@@ -684,7 +681,7 @@ namespace EdgePMO.API.Services
                 {
                     response.IsSuccess = false;
                     response.Message = "Target folder record not found in database.";
-                    response.Code = HttpStatusCode.NotFound;
+                    response.Code = HttpStatusCode.BadRequest;
                     return response;
                 }
                 targetSubPath = folder.RelativePath;
@@ -746,7 +743,6 @@ namespace EdgePMO.API.Services
             {
                 // Cleanup physical file if DB save or streaming fails
                 if (File.Exists(fullPath)) File.Delete(fullPath);
-                //_logger.LogError(ex, "Error during file streaming upload with folder ID {FolderId}", targetFolderId);
 
                 response.IsSuccess = false;
                 response.Message = $"Something went wrong please try again later";
@@ -755,61 +751,6 @@ namespace EdgePMO.API.Services
 
             return response;
         }
-
-        //public async Task<Response> GetPhysicalStructureAsync()
-        //{
-        //    Response response = new Response();
-        //    string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-        //    string rootPath = Path.Combine("/var/www/", uploadsRelative);
-
-        //    if (!Directory.Exists(rootPath))
-        //    {
-        //        response.IsSuccess = false;
-        //        response.Message = "Uploads directory does not exist on the server.";
-        //        response.Code = HttpStatusCode.NotFound;
-        //        return response;
-        //    }
-
-        //    FileSystemNodeDto? structure = CrawlDirectory(rootPath, rootPath);
-
-        //    response.IsSuccess = true;
-        //    response.Message = "Physical structure retrieved successfully.";
-        //    response.Code = HttpStatusCode.OK;
-        //    response.Result.Add("assets", JsonSerializer.SerializeToNode(structure));
-
-        //    return await Task.FromResult(response);
-        //}
-
-        //private FileSystemNodeDto CrawlDirectory(string currentPath, string rootPath)
-        //{
-        //    FileSystemNodeDto? node = new FileSystemNodeDto
-        //    {
-        //        Name = Path.GetFileName(currentPath),
-        //        RelativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/"),
-        //        IsFolder = true
-        //    };
-
-        //    foreach (string dir in Directory.EnumerateDirectories(currentPath))
-        //    {
-        //        node.Children.Add(CrawlDirectory(dir, rootPath));
-        //    }
-
-        //    foreach (string filePath in Directory.EnumerateFiles(currentPath))
-        //    {
-        //        FileInfo? fileInfo = new FileInfo(filePath);
-        //        node.Children.Add(new FileSystemNodeDto
-        //        {
-        //            Name = fileInfo.Name,
-        //            RelativePath = Path.GetRelativePath(rootPath, filePath).Replace("\\", "/"),
-        //            IsFolder = false,
-        //            Size = fileInfo.Length,
-        //            Extension = fileInfo.Extension.ToLowerInvariant()
-        //        });
-        //    }
-
-        //    return node;
-        //}
-
 
         public async Task<Response> GetPhysicalStructureWithIdsAsync()
         {
@@ -999,6 +940,303 @@ namespace EdgePMO.API.Services
             }
 
             return response;
+        }
+
+        public async Task<Response> DeleteFileAsync(Guid fileId)
+        {
+            MediaFile? fileRecord = await _context.MediaFiles.FindAsync(fileId);
+
+            if (fileRecord == null)
+                return new Response
+                {
+                    IsSuccess = false,
+                    Message = "File not found.",
+                    Code = HttpStatusCode.BadRequest
+                };
+
+            Response response = new();
+
+            try
+            {
+                if (File.Exists(fileRecord.FilePath))
+                    File.Delete(fileRecord.FilePath);
+
+                _context.MediaFiles.Remove(fileRecord);
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "File deleted successfully.";
+                response.Code = HttpStatusCode.OK;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"Permission denied: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+            catch (IOException ex)
+            {
+                response.IsSuccess = false;
+                response.Message = $"File is in use or locked: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+
+            return response;
+        }
+
+        public async Task<Response> RenameContentAsync(Guid id, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName) || newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                return new Response
+                {
+                    IsSuccess = false,
+                    Message = "Invalid name.",
+                    Code = HttpStatusCode.BadRequest
+                };
+
+            string rootPath = "/var/www/uploads";
+            Response response = new();
+
+            await using IDbContextTransaction tx = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                MediaFolder? folder = await _context.MediaFolders.FindAsync(id);
+
+                if (folder != null)
+                {
+                    string parentRelative = Path.GetDirectoryName(folder.RelativePath.Replace("/", Path.DirectorySeparatorChar.ToString())) ?? "";
+                    string newRelative = string.IsNullOrEmpty(parentRelative)? newName : $"{parentRelative.Replace(Path.DirectorySeparatorChar, '/')}/{newName}";
+                    bool conflict = await _context.MediaFolders.AnyAsync(f => f.RelativePath == newRelative);
+
+                    if (conflict)
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "A folder with this name already exists here.",
+                            Code = HttpStatusCode.Conflict
+                        };
+
+                    string oldPhysical = Path.Combine(rootPath, folder.RelativePath);
+                    string newPhysical = Path.Combine(rootPath, newRelative);
+
+                    if (Directory.Exists(oldPhysical))
+                        Directory.Move(oldPhysical, newPhysical);
+
+                    string oldRelative = folder.RelativePath;
+                    folder.Name = newName;
+                    folder.RelativePath = newRelative;
+
+                    await UpdateChildPathsAsync(oldRelative, newRelative, rootPath);
+                }
+                else
+                {
+                    MediaFile? file = await _context.MediaFiles.FindAsync(id);
+
+                    if (file == null)
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "No folder or file found with that ID.",
+                            Code = HttpStatusCode.BadRequest
+                        };
+
+                    string extension = Path.GetExtension(file.FilePath);
+                    string directory = Path.GetDirectoryName(file.FilePath)!;
+                    string newFilePath = Path.Combine(directory, newName + extension);
+
+                    if (File.Exists(newFilePath))
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "A file with this name already exists in this folder.",
+                            Code = HttpStatusCode.Conflict
+                        };
+
+                    if (File.Exists(file.FilePath))
+                        File.Move(file.FilePath, newFilePath);
+
+                    file.FileName = newName + extension;
+                    file.FilePath = newFilePath;
+
+                    if (!string.IsNullOrEmpty(file.FilePath))
+                    {
+                        string fileDir = Path.GetDirectoryName(file.FilePath.Replace("/", Path.DirectorySeparatorChar.ToString())) ?? "";
+                        file.FilePath = string.IsNullOrEmpty(fileDir) ? file.FileName : $"{fileDir.Replace(Path.DirectorySeparatorChar, '/')}/{file.FileName}";
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                response.IsSuccess = true;
+                response.Message = "Renamed successfully.";
+                response.Code = HttpStatusCode.OK;
+            }
+            catch (IOException ex)
+            {
+                await tx.RollbackAsync();
+                response.IsSuccess = false;
+                response.Message = $"File system error: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                response.IsSuccess = false;
+                response.Message = $"Rename failed: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+
+            return response;
+        }
+
+        public async Task<Response> MoveContentAsync(Guid id, Guid? newParentFolderId)
+        {
+            string rootPath = "/var/www/uploads";
+            Response response = new();
+
+            await using IDbContextTransaction tx = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                string destRelative = "";
+                if (newParentFolderId.HasValue)
+                {
+                    MediaFolder? destFolder =
+                        await _context.MediaFolders.FindAsync(newParentFolderId.Value);
+
+                    if (destFolder == null)
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "Destination folder not found.",
+                            Code = HttpStatusCode.NotFound
+                        };
+
+                    destRelative = destFolder.RelativePath;
+                }
+
+                string destPhysical = string.IsNullOrEmpty(destRelative) ? rootPath : Path.Combine(rootPath, destRelative);
+
+                MediaFolder? folder = await _context.MediaFolders.FindAsync(id);
+
+                if (folder != null)
+                {
+                    string candidateRelative = string.IsNullOrEmpty(destRelative) ? folder.Name : $"{destRelative}/{folder.Name}";
+
+                    if (candidateRelative.StartsWith(folder.RelativePath + "/",
+                            StringComparison.OrdinalIgnoreCase) ||
+                        candidateRelative.Equals(folder.RelativePath,
+                            StringComparison.OrdinalIgnoreCase))
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "Cannot move a folder into itself or a descendant.",
+                            Code = HttpStatusCode.BadRequest
+                        };
+
+                    string oldPhysical = Path.Combine(rootPath, folder.RelativePath);
+                    string newPhysical = Path.Combine(destPhysical, folder.Name);
+
+                    if (Directory.Exists(newPhysical))
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "A folder with this name already exists at the destination.",
+                            Code = HttpStatusCode.Conflict
+                        };
+
+                    Directory.Move(oldPhysical, newPhysical);
+
+                    string oldRelative = folder.RelativePath;
+                    folder.RelativePath = candidateRelative;
+                    folder.ParentFolderId = newParentFolderId;
+
+                    await UpdateChildPathsAsync(oldRelative, candidateRelative, rootPath);
+                }
+                else
+                {
+                    MediaFile? file = await _context.MediaFiles.FindAsync(id);
+
+                    if (file == null)
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "No folder or file found with that ID.",
+                            Code = HttpStatusCode.NotFound
+                        };
+
+                    string newFilePath = Path.Combine(destPhysical, file.FileName);
+
+                    if (File.Exists(newFilePath))
+                        return new Response
+                        {
+                            IsSuccess = false,
+                            Message = "A file with this name already exists at the destination.",
+                            Code = HttpStatusCode.Conflict
+                        };
+
+                    File.Move(file.FilePath, newFilePath);
+
+                    file.FilePath = newFilePath;
+                    file.FolderId = newParentFolderId;
+
+                    if (!string.IsNullOrEmpty(file.FilePath))
+                        file.FilePath = string.IsNullOrEmpty(destRelative)? file.FileName : $"{destRelative}/{file.FileName}";
+                }
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                response.IsSuccess = true;
+                response.Message = "Moved successfully.";
+                response.Code = HttpStatusCode.OK;
+            }
+            catch (IOException ex)
+            {
+                await tx.RollbackAsync();
+                response.IsSuccess = false;
+                response.Message = $"File system error: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                response.IsSuccess = false;
+                response.Message = $"Move failed: {ex.Message}";
+                response.Code = HttpStatusCode.InternalServerError;
+            }
+
+            return response;
+        }
+
+        private async Task UpdateChildPathsAsync(string oldRelative, string newRelative, string rootPath)
+        {
+            string oldPrefix = oldRelative + "/";
+            string newPrefix = newRelative + "/";
+
+            List<MediaFolder> childFolders = await _context.MediaFolders
+                .Where(f => f.RelativePath.StartsWith(oldPrefix))
+                .ToListAsync();
+
+            foreach (MediaFolder f in childFolders)
+                f.RelativePath = newPrefix + f.RelativePath[oldPrefix.Length..];
+
+            string oldPhysicalPrefix = Path.Combine(rootPath, oldRelative) + Path.DirectorySeparatorChar;
+            string newPhysicalPrefix = Path.Combine(rootPath, newRelative) + Path.DirectorySeparatorChar;
+
+            List<MediaFile> childFiles = await _context.MediaFiles
+                .Where(f => f.FilePath.StartsWith(oldPhysicalPrefix))
+                .ToListAsync();
+
+            foreach (MediaFile f in childFiles)
+            {
+                f.FilePath = newPhysicalPrefix + f.FilePath[oldPhysicalPrefix.Length..];
+
+                if (!string.IsNullOrEmpty(f.FilePath))
+                    f.FilePath = newPrefix + f.FilePath[oldPrefix.Length..];
+            }
         }
     }
 }

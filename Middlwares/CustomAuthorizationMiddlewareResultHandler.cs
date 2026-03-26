@@ -14,20 +14,16 @@ namespace EdgePMO.API.Middlwares
         {
             if (authorizeResult.Challenged)
             {
-                // 401 Unauthorized - Authentication required
                 await WriteCustomResponseAsync(context, HttpStatusCode.Unauthorized, "Authentication required");
                 return;
             }
 
             if (authorizeResult.Forbidden)
             {
-                // 403 Forbidden - Authenticated but not authorized
-                var user = context.User.Identity?.Name ?? "Unknown";
                 await WriteCustomResponseAsync(context, HttpStatusCode.Forbidden, "Access denied");
                 return;
             }
 
-            // Authorization successful, continue pipeline
             await _defaultHandler.HandleAsync(next, context, policy, authorizeResult);
         }
 
