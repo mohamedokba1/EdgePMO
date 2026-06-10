@@ -766,13 +766,21 @@ namespace EdgePMO.API.Services
             Dictionary<string, Guid>? folderMap = await _context.MediaFolders
                                                             .AsNoTracking()
                                                             .ToDictionaryAsync(f => f.RelativePath.ToLower(), f => f.Id);
+            Dictionary<string, DateTime>? folderDateMap = await _context.MediaFolders
+                                                            .AsNoTracking()
+                                                            .ToDictionaryAsync(f => f.RelativePath.ToLower(), f => f.CreatedAt);
 
             Dictionary<string, Guid>? fileMap = await _context.MediaFiles
-                                        .AsNoTracking()
-                                        .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.Id);
+                                                            .AsNoTracking()
+                                                            .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.Id);
+
+            Dictionary<string, DateTime> fileDateMap = await _context.MediaFiles
+                                                            .AsNoTracking()
+                                                            .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.UploadedAt);
 
 
-            FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap);
+
+            FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap, folderDateMap, fileDateMap);
 
             response.IsSuccess = true;
             response.Code = HttpStatusCode.OK;
@@ -781,26 +789,38 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        private FileSystemNodeDto CrawlWithIds(string currentPath, string rootPath, Dictionary<string, Guid> folderMap, Dictionary<string, Guid> fileMap)
+        private FileSystemNodeDto CrawlWithIds(
+            string currentPath,
+            string rootPath,
+            Dictionary<string, Guid> folderMap,
+            Dictionary<string, Guid> fileMap,
+            Dictionary<string, DateTime> folderDateMap,
+            Dictionary<string, DateTime> fileDateMap)
         {
             string relativePath = Path.GetRelativePath(rootPath, currentPath).Replace("\\", "/");
             if (relativePath == ".") relativePath = "";
 
-            FileSystemNodeDto? node = new FileSystemNodeDto
+            string folderKey = relativePath.ToLower();
+
+            FileSystemNodeDto node = new()
             {
                 Name = Path.GetFileName(currentPath),
                 RelativePath = relativePath,
                 IsFolder = true,
-                Id = folderMap.TryGetValue(relativePath.ToLower(), out Guid folderId) ? folderId : null
+                Id = folderMap.TryGetValue(folderKey, out Guid folderId) ? folderId : null,
+                UploadedAt = folderDateMap.TryGetValue(folderKey, out DateTime folderDate) ? folderDate : DateTime.MinValue
             };
 
             foreach (string dir in Directory.EnumerateDirectories(currentPath))
             {
-                node.Children.Add(CrawlWithIds(dir, rootPath, folderMap, fileMap));
+                node.Children.Add(CrawlWithIds(dir, rootPath,folderMap, fileMap, folderDateMap, fileDateMap));
             }
+
             foreach (string filePath in Directory.EnumerateFiles(currentPath))
             {
-                FileInfo? fileInfo = new FileInfo(filePath);
+                FileInfo fileInfo = new(filePath);
+                string fileKey = filePath.ToLower();
+
                 node.Children.Add(new FileSystemNodeDto
                 {
                     Name = fileInfo.Name,
@@ -808,9 +828,12 @@ namespace EdgePMO.API.Services
                     IsFolder = false,
                     Size = fileInfo.Length,
                     Extension = fileInfo.Extension.ToLowerInvariant(),
-                    Id = fileMap.TryGetValue(filePath.ToLower(), out Guid fileId) ? fileId : null
+                    Id = fileMap.TryGetValue(fileKey, out Guid fileId) ? fileId : null,
+                    UploadedAt = fileDateMap.TryGetValue(fileKey, out DateTime fileDate) ? fileDate : DateTime.MinValue
                 });
             }
+
+            node.Children.Sort((a, b) => b.UploadedAt.CompareTo(a.UploadedAt)); // newest first
 
             return node;
         }
@@ -1100,11 +1123,10 @@ namespace EdgePMO.API.Services
 
             try
             {
-                string destRelative = "";
+                string destRelative = string.Empty;
                 if (newParentFolderId.HasValue)
                 {
-                    MediaFolder? destFolder =
-                        await _context.MediaFolders.FindAsync(newParentFolderId.Value);
+                    MediaFolder? destFolder = await _context.MediaFolders.FindAsync(newParentFolderId.Value);
 
                     if (destFolder == null)
                         return new Response
@@ -1164,7 +1186,7 @@ namespace EdgePMO.API.Services
                         {
                             IsSuccess = false,
                             Message = "No folder or file found with that ID.",
-                            Code = HttpStatusCode.NotFound
+                            Code = HttpStatusCode.BadRequest
                         };
 
                     string newFilePath = Path.Combine(destPhysical, file.FileName);
@@ -1181,9 +1203,6 @@ namespace EdgePMO.API.Services
 
                     file.FilePath = newFilePath;
                     file.FolderId = newParentFolderId;
-
-                    if (!string.IsNullOrEmpty(file.FilePath))
-                        file.FilePath = string.IsNullOrEmpty(destRelative)? file.FileName : $"{destRelative}/{file.FileName}";
                 }
 
                 await _context.SaveChangesAsync();

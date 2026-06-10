@@ -11,5 +11,6 @@ namespace EdgePMO.API.Dtos
         public List<FileSystemNodeDto> Children { get; set; } = new();
         public long? Size { get; set; }
         public string? Extension { get; set; }
+        public DateTime UploadedAt { get; set; }
     }
 }

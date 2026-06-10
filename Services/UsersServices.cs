@@ -448,6 +448,15 @@ namespace EdgePMO.API.Services
                 response.Code = HttpStatusCode.BadRequest;
                 return response;
             }
+
+            if (!dto.TermsAccepted)
+            {
+                response.IsSuccess = false;
+                response.Message = "T&C should be accepted for customers";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
             byte[]? salt = PasswordHasher.GenerateSalt();
             string? hashedPassword = PasswordHasher.Hash(dto.Password, salt);
 

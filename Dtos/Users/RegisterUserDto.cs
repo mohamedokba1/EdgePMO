@@ -12,12 +12,12 @@ namespace EdgePMO.API.Dtos
         [StringLength(50, MinimumLength = 2, ErrorMessage = "Last name must be between 2 and 50 characters.")]
         public string LastName { get; set; }
 
-        [StringLength(15, ErrorMessage = "Phone cannot exceed 15 characters.")]
-        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Phone number can only contain numeric digits (country code is separate).")]
+        [StringLength(16, ErrorMessage = "Phone cannot exceed 16 characters.")]
+        [RegularExpression(@"^\+?[0-9]{6,15}$", ErrorMessage = "Phone must contain 6–15 digits, optionally starting with +.")]
         public string Phone1 { get; set; }
 
-        [StringLength(15, ErrorMessage = "Phone cannot exceed 15 characters.")]
-        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Phone number can only contain numeric digits (country code is separate).")]
+        [StringLength(16, ErrorMessage = "Phone cannot exceed 16 characters.")]
+        [RegularExpression(@"^\+?[0-9]{6,15}$", ErrorMessage = "Phone must contain 6–15 digits, optionally starting with +.")]
         public string Phone2 { get; set; }
 
         [StringLength(255, ErrorMessage = "Last company cannot exceed 255 characters.")]
@@ -37,6 +37,9 @@ namespace EdgePMO.API.Dtos
         [Required(ErrorMessage = "Password confirmation is required.")]
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string PasswordConfirmation { get; set; }
+
+        [Required(ErrorMessage = "T&C should be accepted in registeration form")]
+        public bool TermsAccepted { get; set; }
 
 
         //[RegularExpression(@"^\+[1-9]\d{0,2}$", ErrorMessage = "Country code must start with '+' followed by 1 to 3 digits (e.g. +20,  +1, +44, +966).")]
