@@ -237,6 +237,8 @@ public class Program
                 policy.WithOrigins(
                     "https://edgepmo.com",
                     "https://www.edgepmo.com",
+                    "https://staging.edgepmo.com",
+                    "https://www.staging.edgepmo.com",
                     "http://localhost:4200",
                     "https://localhost:4200",
                     "http://localhost:3000"
