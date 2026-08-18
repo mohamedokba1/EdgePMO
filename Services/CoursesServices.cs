@@ -311,7 +311,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails)
+        public async Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> emails, decimal? amountOverride = null, string? currency = null)
         {
             Response response = new Response();
 
@@ -365,6 +365,26 @@ namespace EdgePMO.API.Services
                 };
 
                 _context.CourseUsers.Add(cu);
+
+                // This grant IS the sale this phase — there's no online checkout, the
+                // admin has already been paid over WhatsApp by the time they enroll
+                // someone. Record it so revenue reporting has something real to read.
+                decimal resolvedAmount = amountOverride ?? (decimal)course.Price;
+                _context.Purchases.Add(new Purchase
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    CourseId = courseId,
+                    PurchaseType = "course",
+                    Amount = resolvedAmount,
+                    Currency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency,
+                    PaymentMethod = "manual",
+                    TransactionId = $"manual-{Guid.NewGuid()}",
+                    Status = "completed",
+                    PurchasedAt = DateTime.UtcNow,
+                    Notes = "Manually granted by admin",
+                });
+
                 enrolled.Add(new { userId = user.Id, email = user.Email });
             }
 

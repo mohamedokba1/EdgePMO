@@ -73,7 +73,7 @@ namespace EdgePMO.API.Controllers
 
         [HttpPatch("{id:guid}/approve")]
         [Authorize(Policy = "Admin")]
-        public async Task<IActionResult> Approve(Guid id)
+        public async Task<IActionResult> Approve(Guid id, [FromBody] PurchaseRequestApproveDto? body)
         {
             string? adminClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(adminClaim, out Guid adminId))
@@ -86,7 +86,7 @@ namespace EdgePMO.API.Controllers
                 });
             }
 
-            Response resp = await _requestServices.ApproveAsync(id, adminId);
+            Response resp = await _requestServices.ApproveAsync(id, adminId, body?.Amount, body?.Currency);
             return StatusCode((int)resp.Code, resp);
         }
 

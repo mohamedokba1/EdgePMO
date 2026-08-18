@@ -69,7 +69,7 @@ namespace EdgePMO.API.Controllers
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GrantAccess(Guid id, [FromBody] ListOfUsersEmails dto)
         {
-            Response resp = await _templatesServices.GrantAccessByEmailsAsync(id, dto.Emails);
+            Response resp = await _templatesServices.GrantAccessByEmailsAsync(id, dto.Emails, dto.Amount, dto.Currency);
             return StatusCode((int)resp.Code, resp);
         }
 

@@ -180,7 +180,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GrantAccessByEmailsAsync(Guid templateId, IEnumerable<string> emails)
+        public async Task<Response> GrantAccessByEmailsAsync(Guid templateId, IEnumerable<string> emails, decimal? amountOverride = null, string? currency = null)
         {
             Response response = new Response();
 
@@ -226,12 +226,32 @@ namespace EdgePMO.API.Services
                     continue;
                 }
 
+                // Same as course enrollment — this grant is the sale this phase,
+                // there's no online checkout. Record it, then link the UserTemplate
+                // row to it so both sides of the grant point at the same sale.
+                decimal resolvedAmount = amountOverride ?? template.Price;
+                Purchase purchase = new Purchase
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    TemplateId = templateId,
+                    PurchaseType = "template",
+                    Amount = resolvedAmount,
+                    Currency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency,
+                    PaymentMethod = "manual",
+                    TransactionId = $"manual-{Guid.NewGuid()}",
+                    Status = "completed",
+                    PurchasedAt = DateTime.UtcNow,
+                    Notes = "Manually granted by admin",
+                };
+                _context.Purchases.Add(purchase);
+
                 UserTemplate? ut = new UserTemplate
                 {
                     Id = Guid.NewGuid(),
                     UserId = user.Id,
                     TemplateId = templateId,
-                    PurchaseId = null,
+                    PurchaseId = purchase.Id,
                     PurchasedAt = DateTime.UtcNow
                 };
 

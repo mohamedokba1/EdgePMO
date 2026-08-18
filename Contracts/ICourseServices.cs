@@ -12,7 +12,7 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> DeleteCourseVideoAsync(Guid courseVideoId);
 
-        Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> email);
+        Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> email, decimal? amountOverride = null, string? currency = null);
 
         Task<Response> GetAllAsync(Guid? currentUserId, bool isAdmin);
 

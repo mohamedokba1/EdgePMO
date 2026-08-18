@@ -167,7 +167,7 @@ namespace EdgePMO.API.Controllers
         [Authorize(Policy = "Admin")]
         public async Task<IActionResult> EnrollUser(Guid id, [FromBody] ListOfUsersEmails dto)
         {
-            Response? resp = await _courseServices.EnrollUsersByEmailsAsync(id, dto.Emails);
+            Response? resp = await _courseServices.EnrollUsersByEmailsAsync(id, dto.Emails, dto.Amount, dto.Currency);
             return StatusCode((int)resp.Code, resp);
         }
 

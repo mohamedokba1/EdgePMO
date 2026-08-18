@@ -8,7 +8,7 @@ namespace EdgePMO.API.Contracts
         Task<Response> GetByIdAsync(Guid id);
         Task<Response> GetForUserAsync(Guid userId);
         Task<Response> GetAllAsync();
-        Task<Response> ApproveAsync(Guid requestId, Guid adminId);
+        Task<Response> ApproveAsync(Guid requestId, Guid adminId, decimal? amountOverride = null, string? currency = null);
         Task<Response> RejectAsync(Guid requestId, Guid adminId, List<string> reasons);
     }
 }

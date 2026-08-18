@@ -187,7 +187,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> ApproveAsync(Guid requestId, Guid adminId)
+        public async Task<Response> ApproveAsync(Guid requestId, Guid adminId, decimal? amountOverride = null, string? currency = null)
         {
             Response response = new Response();
 
@@ -221,6 +221,19 @@ namespace EdgePMO.API.Services
                     response.Code = HttpStatusCode.Unauthorized;
                     return response;
                 }
+                // Requirement: the dashboard's whole financial half depends on this
+                // number being real. There's no online payment this phase — the admin
+                // has already received the money over WhatsApp by the time they click
+                // Approve — so resolve what was actually charged: the caller's
+                // override (a negotiated amount) if given, otherwise the course's or
+                // template's current listed price.
+                Course? course = pr.CourseId.HasValue ? await _context.Courses.FindAsync(pr.CourseId.Value) : null;
+                Template? template = pr.TemplateId.HasValue ? await _context.Templates.FindAsync(pr.TemplateId.Value) : null;
+                decimal resolvedAmount = amountOverride
+                    ?? (course != null ? (decimal)course.Price : (decimal?)null)
+                    ?? template?.Price
+                    ?? 0m;
+
                 Purchase? purchase = new Purchase
                 {
                     Id = Guid.NewGuid(),
@@ -228,6 +241,8 @@ namespace EdgePMO.API.Services
                     TemplateId = pr.TemplateId,
                     CourseId = pr.CourseId,
                     PurchaseType = pr.TemplateId.HasValue ? "template" : "course",
+                    Amount = resolvedAmount,
+                    Currency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency,
                     PaymentMethod = "manual",
                     TransactionId = $"manual-{Guid.NewGuid()}",
                     Status = "completed",

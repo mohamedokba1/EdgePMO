@@ -19,14 +19,39 @@ namespace EdgePMO.API.Services
 
         public async Task<Response> GetAllAsync()
         {
+            // Projected rather than serializing the raw entity — `.Include(p => p.User)`
+            // pulls in PasswordHash/PasswordSalt/RefreshToken, which is exactly the bug
+            // already found and fixed on the course-reviews endpoint (it also crashed
+            // System.Text.Json mid-stream, surfacing to the browser as a bare
+            // net::ERR_FAILED). This endpoint has apparently never actually been called
+            // by the frontend before now, so the bug was latent — fixing it before
+            // wiring the dashboard's revenue reporting up to it.
             Response response = new Response();
-            List<Purchase>? list = await _context.Purchases
+
+            List<object> list = await _context.Purchases
                 .AsNoTracking()
-                .Include(p => p.User)
-                .Include(p => p.Template)
-                .Include(p => p.Course)
                 .OrderByDescending(p => p.PurchasedAt)
-                .ToListAsync();
+                .Select(p => new
+                {
+                    p.Id,
+                    p.UserId,
+                    UserName = p.User != null ? $"{p.User.FirstName} {p.User.LastName}".Trim() : null,
+                    UserEmail = p.User != null ? p.User.Email : null,
+                    p.CourseId,
+                    CourseName = p.Course != null ? p.Course.Name : null,
+                    p.TemplateId,
+                    TemplateName = p.Template != null ? p.Template.Name : null,
+                    p.PurchaseType,
+                    p.Amount,
+                    p.Currency,
+                    p.PaymentMethod,
+                    p.TransactionId,
+                    p.Status,
+                    p.PurchasedAt,
+                    p.RefundedAt,
+                    p.Notes,
+                })
+                .ToListAsync<object>();
 
             response.IsSuccess = true;
             response.Message = "Purchases retrieved.";
@@ -38,12 +63,31 @@ namespace EdgePMO.API.Services
         public async Task<Response> GetByIdAsync(Guid id)
         {
             Response response = new Response();
-            Purchase? purchase = await _context.Purchases
+
+            var purchase = await _context.Purchases
                 .AsNoTracking()
-                .Include(p => p.User)
-                .Include(p => p.Template)
-                .Include(p => p.Course)
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .Where(p => p.Id == id)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.UserId,
+                    UserName = p.User != null ? $"{p.User.FirstName} {p.User.LastName}".Trim() : null,
+                    UserEmail = p.User != null ? p.User.Email : null,
+                    p.CourseId,
+                    CourseName = p.Course != null ? p.Course.Name : null,
+                    p.TemplateId,
+                    TemplateName = p.Template != null ? p.Template.Name : null,
+                    p.PurchaseType,
+                    p.Amount,
+                    p.Currency,
+                    p.PaymentMethod,
+                    p.TransactionId,
+                    p.Status,
+                    p.PurchasedAt,
+                    p.RefundedAt,
+                    p.Notes,
+                })
+                .FirstOrDefaultAsync();
 
             if (purchase == null)
             {
