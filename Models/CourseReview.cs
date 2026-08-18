@@ -12,5 +12,10 @@
         public string Content { get; set; } = null!;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Requirement: admin moderation — suppress a review from public course pages
+        // without permanently deleting it. Defaults false (visible), so existing rows
+        // are unaffected.
+        public bool IsHidden { get; set; } = false;
     }
 }

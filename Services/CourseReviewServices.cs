@@ -83,6 +83,29 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        public async Task<Response> SetHiddenAsync(Guid id, bool isHidden)
+        {
+            Response response = new Response();
+
+            CourseReview? courseReview = await _context.CourseReviews.FindAsync(id);
+            if (courseReview == null)
+            {
+                response.IsSuccess = false;
+                response.Message = $"Course review with id = {id} not found";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            courseReview.IsHidden = isHidden;
+            courseReview.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = isHidden ? "Review hidden." : "Review unhidden.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
         public async Task<Response> GetAllAsync()
         {
             Response response = new Response();

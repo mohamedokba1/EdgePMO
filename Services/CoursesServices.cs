@@ -430,6 +430,13 @@ namespace EdgePMO.API.Services
                 courses = courses
                     .Where(c => c.IsPublic || (currentUserId.HasValue && c.CourseUsers.Any(cu => cu.UserId == currentUserId.Value)))
                     .ToList();
+
+                // Admin-moderated reviews (IsHidden) are suppressed from every
+                // non-admin caller — this is what makes "hide" actually hide.
+                foreach (Course c in courses)
+                {
+                    c.Reviews = c.Reviews.Where(r => !r.IsHidden).ToList();
+                }
             }
 
             response.IsSuccess = true;
@@ -479,6 +486,11 @@ namespace EdgePMO.API.Services
                 response.Message = "Course not found.";
                 response.Code = HttpStatusCode.NotFound;
                 return response;
+            }
+
+            if (!isAdmin)
+            {
+                course.Reviews = course.Reviews.Where(r => !r.IsHidden).ToList();
             }
 
             CourseReadDto? dto = _mapper.Map<CourseReadDto>(course);

@@ -115,8 +115,12 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)deleteResponse.Code, deleteResponse);
         }
 
+        // Admin-only moderation view — returns every review including hidden ones.
+        // Never called by the customer-facing course-details page (reviews arrive
+        // embedded in the course response, already filtered per GetAllAsync/GetByIdAsync
+        // below).
         [HttpGet("{id:guid}/reviews")]
-        [Authorize]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> GetCourseReviews(Guid id)
         {
             Response? resp = await _courseReviewServices.GetByCourseIdAsync(id);
@@ -147,12 +151,23 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
+        // Was [Authorize] only — any logged-in user could delete any review, not
+        // just an admin or the review's own author. Tightened to match this being
+        // an admin moderation action.
         [HttpDelete("reviews/{id:guid}")]
-        [Authorize]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> DeleteCourseReviewById(Guid id)
         {
             Response? deleteResponse = await _courseReviewServices.DeleteAsync(id);
             return StatusCode((int)deleteResponse.Code, deleteResponse);
+        }
+
+        [HttpPatch("reviews/{id:guid}/hide")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> SetCourseReviewHidden(Guid id, [FromBody] SetReviewHiddenDto dto)
+        {
+            Response? resp = await _courseReviewServices.SetHiddenAsync(id, dto.IsHidden);
+            return StatusCode((int)resp.Code, resp);
         }
 
         [HttpGet("{id:guid}/students")]

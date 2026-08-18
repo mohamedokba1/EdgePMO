@@ -137,6 +137,7 @@ namespace EdgePMO.API.Settings
                .ForMember(d => d.Header, opt => opt.MapFrom(s => s.Header))
                .ForMember(d => d.Rating, opt => opt.MapFrom(s => s.Rating))
                .ForMember(d => d.Content, opt => opt.MapFrom(s => s.Content))
+               .ForMember(d => d.IsHidden, opt => opt.MapFrom(s => s.IsHidden))
                .ForMember(d => d.Username, opt => opt.MapFrom(s => $"{s.User.FirstName} {s.User.LastName}"))
                .ForMember(d => d.Email, opt => opt.MapFrom(s => s.User.Email));
 

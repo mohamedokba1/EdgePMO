@@ -11,5 +11,6 @@ namespace EdgePMO.API.Contracts
         Task<Response> CreateAsync(CreateCourseReviewDto dto);
         Task<Response> UpdateAsync(UpdateCourseReviewDto dto);
         Task<Response> DeleteAsync(Guid id);
+        Task<Response> SetHiddenAsync(Guid id, bool isHidden);
     }
 }

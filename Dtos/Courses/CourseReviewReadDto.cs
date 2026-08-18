@@ -8,5 +8,6 @@
         public string? Header { get; set; }
         public double? Rating { get; set; }
         public string? Content { get; set; }
+        public bool IsHidden { get; set; }
     }
 }
