@@ -27,6 +27,36 @@ namespace EdgePMO.API.Services
             _courseContentServices = courseContentServices;
         }
 
+        /// <summary>
+        /// Requirement 4.2 — the course's overall Duration field is auto-derived from
+        /// the sum of every attached video's DurationMinutes, so it's never manually
+        /// re-typed by an admin and never drifts from the actual session content.
+        /// </summary>
+        private static string FormatCourseDuration(double totalMinutes)
+        {
+            if (totalMinutes <= 0) return "0 hours";
+
+            double hours = totalMinutes / 60.0;
+            string hoursText = hours % 1 == 0
+                ? ((int)hours).ToString()
+                : Math.Round(hours, 1).ToString();
+
+            return $"{hoursText} hours";
+        }
+
+        private async Task RecalculateCourseDurationAsync(Guid courseId)
+        {
+            double totalMinutes = await _context.CourseVideos
+                .Where(v => v.CourseOutline.CourseId == courseId)
+                .SumAsync(v => (double?)v.DurationMinutes) ?? 0;
+
+            Course? course = await _context.Courses.FindAsync(courseId);
+            if (course == null) return;
+
+            course.Duration = FormatCourseDuration(totalMinutes);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<Response> AttachCourseVideoAsync(CourseVideoCreateDto dto)
         {
             Response response = new Response();
@@ -112,6 +142,7 @@ namespace EdgePMO.API.Services
 
             _context.CourseVideos.Add(video);
             await _context.SaveChangesAsync();
+            await RecalculateCourseDurationAsync(dto.CourseId);
 
             Response? courseResponse = await GetByIdAsync(dto.CourseId, currentUserId: null, isAdmin: true);
 
@@ -149,6 +180,10 @@ namespace EdgePMO.API.Services
                 ? await _context.Courses.MaxAsync(c => c.SortOrder) + 1
                 : 0;
 
+            // Requirement 4.2 — Duration is derived from the sessions being created,
+            // not taken from dto.Duration.
+            double totalMinutes = dto.Content.Sum(c => c.Videos?.Sum(v => v.DurationMinutes) ?? 0);
+
             Course? course = new Course
             {
                 CourseId = Guid.NewGuid(),
@@ -166,7 +201,7 @@ namespace EdgePMO.API.Services
                 Sessions = dto.Sessions,
                 Category = dto?.Category,
                 Certification = dto.Certification,
-                Duration = dto.Duration?.ToString() ?? null,
+                Duration = FormatCourseDuration(totalMinutes),
                 InstructorId = dto.InstructorId,
                 Price = dto.Price,
                 IsActive = true,
@@ -252,7 +287,9 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
 
-            CourseVideo? existing = await _context.CourseVideos.FindAsync(courseVideoId);
+            CourseVideo? existing = await _context.CourseVideos
+                .Include(v => v.CourseOutline)
+                .FirstOrDefaultAsync(v => v.Id == courseVideoId);
             if (existing == null)
             {
                 response.IsSuccess = false;
@@ -262,9 +299,11 @@ namespace EdgePMO.API.Services
             }
 
             string? videoUrl = existing.Url;
+            Guid courseId = existing.CourseOutline.CourseId;
 
             _context.CourseVideos.Remove(existing);
             await _context.SaveChangesAsync();
+            await RecalculateCourseDurationAsync(courseId);
 
             response.IsSuccess = true;
             response.Message = "Course video deleted.";
@@ -630,7 +669,9 @@ namespace EdgePMO.API.Services
             if (!string.IsNullOrWhiteSpace(dto.Description)) course.Description = dto.Description;
             if (dto.Price.HasValue) course.Price = dto.Price.Value;
             if (dto.IsActive.HasValue) course.IsActive = dto.IsActive.Value;
-            if (!string.IsNullOrWhiteSpace(dto.Duration)) course.Duration = dto.Duration;
+            // Duration (requirement 4.2) is derived below from the actual session
+            // videos whenever Content is part of this update — dto.Duration is no
+            // longer taken at face value so it can't drift from the real content.
             if (!string.IsNullOrWhiteSpace(dto.Overview)) course.Overview = dto.Overview;
             if (!string.IsNullOrWhiteSpace(dto.Subtitle)) course.Subtitle = dto.Subtitle;
             if (!string.IsNullOrWhiteSpace(dto.MainObjective)) course.MainObjective = dto.MainObjective;
@@ -826,6 +867,13 @@ namespace EdgePMO.API.Services
             {
                 return new Response { IsSuccess = false, Code = HttpStatusCode.InternalServerError, Message = ex.Message };
             }
+
+            // Requirement 4.2 — recomputed from the now-committed video set rather than
+            // tracked incrementally above; the add/update/remove branching for videos,
+            // outlines, and documents is intricate enough that re-querying the saved
+            // state is far less error-prone than trying to keep a running total in sync
+            // with every branch. A no-op when dto.Content wasn't part of this update.
+            await RecalculateCourseDurationAsync(course.CourseId);
 
             response.IsSuccess = true;
             response.Code = HttpStatusCode.OK;
