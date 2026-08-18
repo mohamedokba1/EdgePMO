@@ -93,7 +93,13 @@ namespace EdgePMO.API.Services
                                                             .Include(cr => cr.Course).ToListAsync();
             response.IsSuccess = true;
             response.Message = $"All course reviews retrieved successfully!";
-            response.Result.Add("reviews", JsonSerializer.SerializeToNode(listOfCourseReviews) ?? JsonValue.Create(Array.Empty<object>()));
+            // Was serializing the raw entity graph (including the full User navigation —
+            // PasswordHash/PasswordSalt/RefreshToken and all) via JsonSerializer.SerializeToNode.
+            // Besides being a real data-exposure risk, that raw graph is also a likely source
+            // of the "Failed to fetch" / net::ERR_FAILED reproduced live on the sibling
+            // GetByCourseIdAsync — a mapped, flat DTO has neither problem.
+            List<CourseReviewReadDto> reviewDtos = _mapper.Map<List<CourseReviewReadDto>>(listOfCourseReviews);
+            response.Result.Add("reviews", JsonSerializer.SerializeToNode(reviewDtos) ?? JsonValue.Create(Array.Empty<object>()));
 
             return response;
         }
@@ -109,7 +115,8 @@ namespace EdgePMO.API.Services
                                                             .ToListAsync();
             response.IsSuccess = true;
             response.Message = $"All course reviews retrieved successfully!";
-            response.Result.Add("reviews", JsonSerializer.SerializeToNode(listOfCourseReviews) ?? JsonValue.Create(Array.Empty<object>()));
+            List<CourseReviewReadDto> reviewDtos = _mapper.Map<List<CourseReviewReadDto>>(listOfCourseReviews);
+            response.Result.Add("reviews", JsonSerializer.SerializeToNode(reviewDtos) ?? JsonValue.Create(Array.Empty<object>()));
 
             return response;
         }
@@ -126,7 +133,8 @@ namespace EdgePMO.API.Services
                                                             .FirstOrDefaultAsync();
             response.IsSuccess = true;
             response.Message = $"Course review retrieved successfully!";
-            response.Result.Add("reviews", JsonSerializer.SerializeToNode(courseReview) ?? JsonValue.Create(Array.Empty<object>()));
+            CourseReviewReadDto? reviewDto = courseReview != null ? _mapper.Map<CourseReviewReadDto>(courseReview) : null;
+            response.Result.Add("reviews", JsonSerializer.SerializeToNode(reviewDto) ?? JsonValue.Create(Array.Empty<object>()));
 
             return response;
         }
