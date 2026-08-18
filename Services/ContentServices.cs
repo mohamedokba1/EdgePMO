@@ -4,6 +4,7 @@ using EdgePMO.API.Models;
 using EdgePMO.API.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -111,11 +112,13 @@ namespace EdgePMO.API.Services
 
         private readonly EdgepmoDbContext _context;
         private readonly ContentSettings _settings;
+        private readonly ILogger<ContentServices> _logger;
 
-        public ContentServices(IOptions<ContentSettings> settings, EdgepmoDbContext context)
+        public ContentServices(IOptions<ContentSettings> settings, EdgepmoDbContext context, ILogger<ContentServices> logger)
         {
             _settings = settings.Value;
             _context = context;
+            _logger = logger;
         }
 
         public Task<Response> DeleteAssetAsync(string fileName)
@@ -617,47 +620,63 @@ namespace EdgePMO.API.Services
                 return new Response { IsSuccess = false, Message = "Folder name is required", Code = HttpStatusCode.BadRequest };
             }
 
-            bool exists = await _context.MediaFolders
-                .AnyAsync(f => f.Name.ToLower() == folderName.ToLower() && f.ParentFolderId == parentFolderId);
-
-            if (exists)
+            try
             {
-                return new Response { IsSuccess = false, Message = "Folder already exists in this location", Code = HttpStatusCode.Conflict };
+                bool exists = await _context.MediaFolders
+                    .AnyAsync(f => f.Name.ToLower() == folderName.ToLower() && f.ParentFolderId == parentFolderId);
+
+                if (exists)
+                {
+                    return new Response { IsSuccess = false, Message = "Folder already exists in this location", Code = HttpStatusCode.Conflict };
+                }
+
+                string parentPath = string.Empty;
+                if (parentFolderId.HasValue)
+                {
+                    MediaFolder? parent = await _context.MediaFolders.FindAsync(parentFolderId);
+                    if (parent == null)
+                    {
+                        return new Response { IsSuccess = false, Message = "Parent folder record not found in database.", Code = HttpStatusCode.BadRequest };
+                    }
+                    parentPath = parent.RelativePath;
+                }
+
+                string relativePath = Path.Combine(parentPath, folderName);
+                string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
+                string fullPath = Path.Combine("/var/www/", uploadsRelative, relativePath);
+
+                if (!Directory.Exists(fullPath))
+                {
+                    Directory.CreateDirectory(fullPath);
+                }
+
+                MediaFolder? newFolder = new MediaFolder
+                {
+                    Id = Guid.NewGuid(),
+                    Name = folderName,
+                    RelativePath = relativePath,
+                    ParentFolderId = parentFolderId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.MediaFolders.Add(newFolder);
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Result.Add("folderId", JsonValue.Create(newFolder.Id));
+                response.Code = HttpStatusCode.OK;
+                response.Message = "Folder created successfully";
+                return response;
             }
-
-            string parentPath = string.Empty;
-            if (parentFolderId.HasValue)
+            catch (Exception ex)
             {
-                MediaFolder? parent = await _context.MediaFolders.FindAsync(parentFolderId);
-                parentPath = parent?.RelativePath ?? string.Empty;
+                // Previously unhandled here — any failure (bad FS permissions on the
+                // uploads root, a broken MediaFolders schema/FK, etc.) surfaced as a
+                // bare framework 500 with no diagnosable message. Logging the real
+                // exception is what requirements 1.1/1.2 were missing to be debuggable.
+                _logger.LogError(ex, "CreateFolderAsync failed for folderName={FolderName}, parentFolderId={ParentFolderId}", folderName, parentFolderId);
+                return new Response { IsSuccess = false, Message = "Could not create the folder. Please try again later.", Code = HttpStatusCode.InternalServerError };
             }
-
-            string relativePath = Path.Combine(parentPath, folderName);
-            string uploadsRelative = string.IsNullOrWhiteSpace(_settings.UploadsRelative) ? "uploads" : _settings.UploadsRelative;
-            string fullPath = Path.Combine("/var/www/", uploadsRelative, relativePath);
-
-            if (!Directory.Exists(fullPath))
-            {
-                Directory.CreateDirectory(fullPath);
-            }
-
-            MediaFolder? newFolder = new MediaFolder
-            {
-                Id = Guid.NewGuid(),
-                Name = folderName,
-                RelativePath = relativePath,
-                ParentFolderId = parentFolderId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.MediaFolders.Add(newFolder);
-            await _context.SaveChangesAsync();
-
-            response.IsSuccess = true;
-            response.Result.Add("folderId", JsonValue.Create(newFolder.Id));
-            response.Code = HttpStatusCode.OK;
-            response.Message = "Folder created successfully";
-            return response;
         }
 
         public async Task<bool> FolderExistsAsync(string folderName, Guid? parentFolderId)
@@ -762,6 +781,8 @@ namespace EdgePMO.API.Services
                 // Cleanup physical file if DB save or streaming fails
                 if (File.Exists(fullPath)) File.Delete(fullPath);
 
+                _logger.LogError(ex, "UploadMediaStreamWithFolderIdAsync failed for fileName={FileName}, targetFolderId={TargetFolderId}", fileName, targetFolderId);
+
                 response.IsSuccess = false;
                 response.Message = $"Something went wrong please try again later";
                 response.Code = HttpStatusCode.InternalServerError;
@@ -781,30 +802,46 @@ namespace EdgePMO.API.Services
                 return new Response { IsSuccess = false, Message = "Uploads root not found", Code = HttpStatusCode.BadRequest };
             }
 
-            Dictionary<string, Guid>? folderMap = await _context.MediaFolders
-                                                            .AsNoTracking()
-                                                            .ToDictionaryAsync(f => f.RelativePath.ToLower(), f => f.Id);
-            Dictionary<string, DateTime>? folderDateMap = await _context.MediaFolders
-                                                            .AsNoTracking()
-                                                            .ToDictionaryAsync(f => f.RelativePath.ToLower(), f => f.CreatedAt);
+            try
+            {
+                List<MediaFolder> folders = await _context.MediaFolders.AsNoTracking().ToListAsync();
+                List<MediaFile> files = await _context.MediaFiles.AsNoTracking().ToListAsync();
 
-            Dictionary<string, Guid>? fileMap = await _context.MediaFiles
-                                                            .AsNoTracking()
-                                                            .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.Id);
+                // Built by hand (last-wins) instead of ToDictionaryAsync — two rows
+                // colliding on the same lowercased path would otherwise throw
+                // "An item with the same key has already been added" and 500 the
+                // whole media library instead of just degrading gracefully.
+                Dictionary<string, Guid> folderMap = new();
+                Dictionary<string, DateTime> folderDateMap = new();
+                foreach (MediaFolder f in folders)
+                {
+                    string key = f.RelativePath.ToLower();
+                    folderMap[key] = f.Id;
+                    folderDateMap[key] = f.CreatedAt;
+                }
 
-            Dictionary<string, DateTime> fileDateMap = await _context.MediaFiles
-                                                            .AsNoTracking()
-                                                            .ToDictionaryAsync(f => f.FilePath.ToLower(), f => f.UploadedAt);
+                Dictionary<string, Guid> fileMap = new();
+                Dictionary<string, DateTime> fileDateMap = new();
+                foreach (MediaFile f in files)
+                {
+                    string key = f.FilePath.ToLower();
+                    fileMap[key] = f.Id;
+                    fileDateMap[key] = f.UploadedAt;
+                }
 
+                FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap, folderDateMap, fileDateMap);
 
-
-            FileSystemNodeDto? tree = CrawlWithIds(rootPath, rootPath, folderMap, fileMap, folderDateMap, fileDateMap);
-
-            response.IsSuccess = true;
-            response.Code = HttpStatusCode.OK;
-            response.Message = "Physical structure with IDs retrieved successfully.";
-            response.Result.Add("assets", JsonSerializer.SerializeToNode(tree));
-            return response;
+                response.IsSuccess = true;
+                response.Code = HttpStatusCode.OK;
+                response.Message = "Physical structure with IDs retrieved successfully.";
+                response.Result.Add("assets", JsonSerializer.SerializeToNode(tree));
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetPhysicalStructureWithIdsAsync failed");
+                return new Response { IsSuccess = false, Message = "Could not load the media library. Please try again later.", Code = HttpStatusCode.InternalServerError };
+            }
         }
 
         private FileSystemNodeDto CrawlWithIds(

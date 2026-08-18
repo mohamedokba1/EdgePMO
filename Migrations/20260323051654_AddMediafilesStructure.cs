@@ -81,7 +81,7 @@ namespace EdgePMO.API.Migrations
                         name: "FK_MediaFolders_MediaFolders_ParentFolderId",
                         column: x => x.ParentFolderId,
                         principalTable: "MediaFolders",
-                        principalColumn: "CertificateId",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -106,7 +106,7 @@ namespace EdgePMO.API.Migrations
                 table: "MediaFiles",
                 column: "FolderId",
                 principalTable: "MediaFolders",
-                principalColumn: "CertificateId",
+                principalColumn: "Id",
                 onDelete: ReferentialAction.SetNull);
         }
 
