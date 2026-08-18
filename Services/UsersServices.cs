@@ -466,8 +466,11 @@ namespace EdgePMO.API.Services
                 LastName = dto.LastName,
                 Email = dto.Email.ToLower(),
                 Role = isAdmin ? "admin" : "user",
-                PhoneNo_1 = dto.Phone1,
-                PhoneNo_2 = dto.Phone2,
+                // PhoneNo_1/PhoneNo_2 are NOT NULL columns (see migration AddPhoneNumbersForUsers),
+                // but neither DTO field is [Required] — coalesce to avoid a DbUpdateException
+                // when a caller omits them (Phone2 is no longer sent by the frontend at all).
+                PhoneNo_1 = dto.Phone1 ?? string.Empty,
+                PhoneNo_2 = dto.Phone2 ?? string.Empty,
                 PasswordSalt = salt,
                 IsAdmin = isAdmin,
                 LastCompnay = dto.LastCompany,

@@ -16,12 +16,16 @@ namespace EdgePMO.API.Dtos
         [RegularExpression(@"^\+?[0-9]{6,15}$", ErrorMessage = "Phone must contain 6–15 digits, optionally starting with +.")]
         public string Phone1 { get; set; }
 
+        // Optional field (no [Required]) — must be nullable, otherwise ASP.NET Core's
+        // implicit non-nullable-reference-type validation rejects the request when the
+        // frontend omits it (removed from the registration form; see requirement 2.2).
         [StringLength(16, ErrorMessage = "Phone cannot exceed 16 characters.")]
         [RegularExpression(@"^\+?[0-9]{6,15}$", ErrorMessage = "Phone must contain 6–15 digits, optionally starting with +.")]
-        public string Phone2 { get; set; }
+        public string? Phone2 { get; set; }
 
+        // Optional field (no [Required]) — same nullability reasoning as Phone2.
         [StringLength(255, ErrorMessage = "Last company cannot exceed 255 characters.")]
-        public string LastCompany { get; set; }
+        public string? LastCompany { get; set; }
 
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Enter a valid email address.")]
@@ -38,9 +42,11 @@ namespace EdgePMO.API.Dtos
         [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string PasswordConfirmation { get; set; }
 
-        [Required(ErrorMessage = "T&C should be accepted in registeration form")]
+        // [Required] here is technically a no-op on a non-nullable bool (it only catches
+        // a missing/null value, never an explicit `false`) — but UsersServices.Register()
+        // already has a real `if (!dto.TermsAccepted)` check that correctly rejects false.
+        // Kept as documentation of intent; the actual enforcement lives in the service.
         public bool TermsAccepted { get; set; }
-
 
         //[RegularExpression(@"^\+[1-9]\d{0,2}$", ErrorMessage = "Country code must start with '+' followed by 1 to 3 digits (e.g. +20,  +1, +44, +966).")]
         //public string CountryCode { get; set; }

@@ -248,11 +248,29 @@ namespace EdgePMO.API.Services
                                                 .ToListAsync();
 
             // Build result list
+            // Match by the exact stored FilePath first (stable — one physical file, one record).
+            // Fall back to filename+extension only for older records whose FilePath might not
+            // line up byte-for-byte (e.g. a rename/move that didn't update FilePath). Matching
+            // on filename+extension ALONE (the old behavior) silently mismatched whenever two
+            // files with the same name existed in different folders, which is what made
+            // uploaded materials "disappear" from the admin picker (ExistsInDb came back false
+            // for a real, present file).
             var assets = files.Select(file =>
             {
                 string fileName = Path.GetFileName(file);
                 string extension = Path.GetExtension(file);
-                var dbEntry = dbFiles.FirstOrDefault(mf => mf.FileName == fileName && mf.Extension == extension);
+
+                MediaFile? dbEntry = dbFiles.FirstOrDefault(mf =>
+                    string.Equals(mf.FilePath, file, StringComparison.OrdinalIgnoreCase));
+
+                // Case-insensitive: the v2 folder-upload path stores Extension lowercased
+                // (Path.GetExtension(fileName).ToLowerInvariant()) but a raw disk re-scan
+                // does not — a case-sensitive compare here silently failed to match any
+                // file with an uppercase extension (e.g. "Session.PDF" vs stored ".pdf"),
+                // which is the other half of what made materials "disappear."
+                dbEntry ??= dbFiles.FirstOrDefault(mf =>
+                    mf.FileName == fileName &&
+                    string.Equals(mf.Extension, extension, StringComparison.OrdinalIgnoreCase));
 
                 return new
                 {
