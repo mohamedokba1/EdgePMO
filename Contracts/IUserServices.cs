@@ -31,5 +31,15 @@ namespace EdgePMO.API.Contracts
         Task<Response> SendVerificationMail(VerifyRequestDto dto, string subject);
 
         Task<Response> GoogleLoginAsync(string idToken);
+
+        /// <summary>
+        /// Requirement 3.6 — one device at a time for video playback. Rotates the user's
+        /// SessionId (identical mechanism to login/refresh) and issues a fresh token for
+        /// the calling device. Any other device holding the old SessionId gets logged out
+        /// on its very next authenticated request, via the existing OnTokenValidated check
+        /// in Program.cs — no new enforcement path needed, just reusing it at a new trigger
+        /// point (start of video playback, not just login).
+        /// </summary>
+        Task<Response> ClaimPlaybackSessionAsync(Guid userId);
     }
 }

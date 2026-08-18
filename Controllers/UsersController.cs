@@ -114,6 +114,28 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
+        // Requirement 3.6 — call this when a course video starts/resumes playing. Rotates
+        // the session so any other device gets logged out on its next request (same
+        // mechanism login already uses) and returns a fresh token for the calling device.
+        [HttpPost("claim-playback-session")]
+        [Authorize]
+        public async Task<IActionResult> ClaimPlaybackSession()
+        {
+            string? currentIdClaim = User.FindFirstValue("id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(currentIdClaim, out Guid userId))
+            {
+                return StatusCode((int)HttpStatusCode.Unauthorized, new Response
+                {
+                    IsSuccess = false,
+                    Message = "Authentication required",
+                    Code = HttpStatusCode.Unauthorized,
+                });
+            }
+
+            Response response = await _userServices.ClaimPlaybackSessionAsync(userId);
+            return StatusCode((int)response.Code, response);
+        }
+
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> Refresh(RefreshTokenRequestDto dto)

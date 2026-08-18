@@ -405,6 +405,35 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        public async Task<Response> ClaimPlaybackSessionAsync(Guid userId)
+        {
+            Response response = new Response();
+
+            User? user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "User not found";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            // Same rotation login/refresh already do — any other device holding the old
+            // SessionId fails OnTokenValidated on its next request and gets logged out
+            // with "Session expired.", exactly the same as if it had logged in elsewhere.
+            user.SessionId = Guid.NewGuid();
+            user.UpdatedAt = DateTime.UtcNow;
+            string accessToken = _tokenService.GenerateAccessToken(user);
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Playback session claimed.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("accessToken", accessToken);
+            return response;
+        }
+
         public async Task<Response> Refresh(string refreshToken)
         {
             Response response = new Response();
