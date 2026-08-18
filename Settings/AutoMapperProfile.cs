@@ -43,7 +43,17 @@ namespace EdgePMO.API.Settings
                 .ForMember(dest => dest.WhatStudentsLearn, opt => opt.MapFrom(src => src.WhatStudentsLearn ?? new List<string>()))
                 .ForMember(dest => dest.WhoShouldAttend, opt => opt.MapFrom(src => src.WhoShouldAttend ?? new List<string>()))
                 .ForMember(dest => dest.Requirements, opt => opt.MapFrom(src => src.Requirements ?? new List<string>()))
-                .ForMember(dest => dest.StudentsList, opt => opt.MapFrom(src => src.CourseUsers.Select(cu => cu.User).ToList()));
+                .ForMember(dest => dest.StudentsList, opt => opt.MapFrom(src => src.CourseUsers.Select(cu => new CourseStudentDto
+                {
+                    Id = cu.User.Id,
+                    UserName = $"{cu.User.FirstName} {cu.User.LastName}",
+                    Email = cu.User.Email,
+                    Role = cu.User.Role,
+                    IsActive = cu.User.IsActive ?? true,
+                    CreatedAt = cu.User.CreatedAt ?? DateTime.MinValue,
+                    Progress = cu.Progress,
+                    EnrolledAt = cu.EnrolledAt,
+                }).ToList()));
 
             CreateMap<CourseOutline, CourseContentReadDto>()
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))

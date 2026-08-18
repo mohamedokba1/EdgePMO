@@ -25,6 +25,6 @@ namespace EdgePMO.API.Dtos
         public List<string> Requirements { get; init; } = new();
         public List<CourseContentReadDto> Content { get; init; } = new();
         public List<CourseReviewReadDto> Reviews { get; init; } = new();
-        public List<UserReadDto> StudentsList { get; init; } = new();
+        public List<CourseStudentDto> StudentsList { get; init; } = new();
     }
 }
