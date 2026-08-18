@@ -31,5 +31,11 @@ namespace EdgePMO.API.Contracts
         Task<Response> UpdateCourseVideoAsync(CourseVideoUpdateDto dto);
 
         Task<Response> UpdateUserProgressAsync(Guid userId, Guid courseId, double progress);
+
+        /// <summary>Requirement 3.5 — upserts how far a user has watched into a video.</summary>
+        Task<Response> UpdateVideoWatchProgressAsync(Guid userId, Guid videoId, double watchedSeconds);
+
+        /// <summary>Requirement 5.2 — per-video view counts and watch-time for admins.</summary>
+        Task<Response> GetVideoAnalyticsAsync(Guid courseId);
     }
 }

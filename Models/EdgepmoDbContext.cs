@@ -38,6 +38,7 @@ public partial class EdgepmoDbContext : DbContext
     public DbSet<UserTemplate> UserTemplates { get; set; }
     public DbSet<MediaFolder> MediaFolders { get; set; }
     public DbSet<PromoCode> PromoCodes { get; set; }
+    public DbSet<VideoWatchProgress> VideoWatchProgresses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -542,6 +543,29 @@ public partial class EdgepmoDbContext : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.DiscountValue).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // ===== VideoWatchProgress CONFIGURATION (requirements 3.5/5.2) =====
+        modelBuilder.Entity<VideoWatchProgress>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            // One row per (video, user) — upserted, not appended to.
+            entity.HasIndex(e => new { e.CourseVideoId, e.UserId }).IsUnique();
+
+            entity.HasOne(e => e.CourseVideo)
+                .WithMany()
+                .HasForeignKey(e => e.CourseVideoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.FirstWatchedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastWatchedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // ===== MediaFile CONFIGURATION =====

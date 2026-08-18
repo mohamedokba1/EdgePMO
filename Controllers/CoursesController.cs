@@ -197,5 +197,28 @@ namespace EdgePMO.API.Controllers
             Response? response = await _courseServices.UpdateUserProgressAsync(userId, dto.CourseId, dto.Progress);
             return StatusCode((int)response.Code, response);
         }
+
+        // Requirement 3.5 — real watched-minutes per video, more granular than the
+        // single course-level Progress percentage synced above.
+        [HttpPatch("videos/watch-progress")]
+        [Authorize]
+        public async Task<IActionResult> UpdateVideoWatchProgress([FromBody] WatchProgressUpdateDto dto)
+        {
+            string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+            Guid userId = Guid.Parse(userIdClaim);
+            Response? response = await _courseServices.UpdateVideoWatchProgressAsync(userId, dto.VideoId, dto.WatchedSeconds);
+            return StatusCode((int)response.Code, response);
+        }
+
+        // Requirement 5.2 — per-video view counts and watch-time for admins.
+        [HttpGet("{id:guid}/video-analytics")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> GetVideoAnalytics(Guid id)
+        {
+            Response? response = await _courseServices.GetVideoAnalyticsAsync(id);
+            return StatusCode((int)response.Code, response);
+        }
     }
 }

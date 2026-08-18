@@ -894,6 +894,101 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        /// <summary>Requirement 3.5 — upserts how far a user has watched into a video.</summary>
+        public async Task<Response> UpdateVideoWatchProgressAsync(Guid userId, Guid videoId, double watchedSeconds)
+        {
+            Response response = new Response();
+
+            bool videoExists = await _context.CourseVideos.AnyAsync(v => v.Id == videoId);
+            if (!videoExists)
+            {
+                return new Response { IsSuccess = false, Message = "Video not found.", Code = HttpStatusCode.NotFound };
+            }
+
+            VideoWatchProgress? existing = await _context.VideoWatchProgresses
+                .FirstOrDefaultAsync(p => p.CourseVideoId == videoId && p.UserId == userId);
+
+            if (existing == null)
+            {
+                existing = new VideoWatchProgress
+                {
+                    CourseVideoId = videoId,
+                    UserId = userId,
+                    WatchedSeconds = watchedSeconds,
+                    ViewCount = 1,
+                };
+                _context.VideoWatchProgresses.Add(existing);
+            }
+            else
+            {
+                // Furthest point reached, not the latest — a rewind shouldn't lose progress.
+                existing.WatchedSeconds = Math.Max(existing.WatchedSeconds, watchedSeconds);
+                existing.LastWatchedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Watch progress updated.";
+            response.Code = HttpStatusCode.OK;
+            return response;
+        }
+
+        /// <summary>Requirement 5.2 — per-video view counts and watch-time for admins.</summary>
+        public async Task<Response> GetVideoAnalyticsAsync(Guid courseId)
+        {
+            Response response = new Response();
+
+            List<CourseVideo> videos = await _context.CourseVideos
+                .AsNoTracking()
+                .Where(v => v.CourseOutline.CourseId == courseId)
+                .Include(v => v.CourseOutline)
+                .ToListAsync();
+
+            if (!videos.Any())
+            {
+                response.IsSuccess = true;
+                response.Message = "No videos found for this course.";
+                response.Code = HttpStatusCode.OK;
+                response.Result.Add("videos", JsonSerializer.SerializeToNode(Array.Empty<object>()));
+                return response;
+            }
+
+            List<Guid> videoIds = videos.Select(v => v.Id).ToList();
+            List<VideoWatchProgress> allProgress = await _context.VideoWatchProgresses
+                .AsNoTracking()
+                .Where(p => videoIds.Contains(p.CourseVideoId))
+                .ToListAsync();
+
+            var analytics = videos.Select(v =>
+            {
+                List<VideoWatchProgress> videoProgress = allProgress.Where(p => p.CourseVideoId == v.Id).ToList();
+                double durationSeconds = v.DurationMinutes * 60.0;
+                double avgCompletionPercent = durationSeconds > 0 && videoProgress.Any()
+                    ? Math.Round(videoProgress.Average(p => Math.Min(p.WatchedSeconds / durationSeconds, 1.0)) * 100, 1)
+                    : 0;
+
+                return new
+                {
+                    VideoId = v.Id,
+                    Title = v.Title,
+                    SessionTitle = v.CourseOutline.Title,
+                    ViewCount = videoProgress.Sum(p => p.ViewCount),
+                    UniqueViewers = videoProgress.Count,
+                    TotalWatchedMinutes = Math.Round(videoProgress.Sum(p => p.WatchedSeconds) / 60.0, 1),
+                    AvgCompletionPercent = avgCompletionPercent,
+                };
+            })
+            .OrderByDescending(a => a.ViewCount)
+            .ToList();
+
+            response.IsSuccess = true;
+            response.Message = "Video analytics retrieved.";
+            response.Code = HttpStatusCode.OK;
+            response.Result.Add("videos", JsonSerializer.SerializeToNode(analytics) ?? JsonValue.Create(Array.Empty<object>()));
+            return response;
+        }
+
         private async Task<string?> GetFilePathAsync(Guid mediaId)
         {
             var media = await _context.MediaFiles
