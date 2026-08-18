@@ -21,18 +21,40 @@ namespace EdgePMO.API.Controllers
             _courseReviewServices = courseReviewServices;
         }
 
+        // Deliberately anonymous-accessible (public course list/details), but still reads
+        // the caller's identity when a token IS attached — requirement 4.4 needs to know
+        // "is this an admin" and "has this user purchased the hidden course" without
+        // requiring login for the normal public-browsing case.
+        private (Guid? userId, bool isAdmin) GetCallerContext()
+        {
+            string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            Guid? userId = Guid.TryParse(userIdClaim, out Guid parsed) ? parsed : null;
+            bool isAdmin = User.FindFirst(ClaimTypes.Role)?.Value == "admin";
+            return (userId, isAdmin);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            Response? courses = await _courseServices.GetAllAsync();
+            (Guid? userId, bool isAdmin) = GetCallerContext();
+            Response? courses = await _courseServices.GetAllAsync(userId, isAdmin);
             return StatusCode((int)courses.Code, courses);
         }
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> Get(Guid id)
         {
-            Response? courseResponse = await _courseServices.GetByIdAsync(id);
+            (Guid? userId, bool isAdmin) = GetCallerContext();
+            Response? courseResponse = await _courseServices.GetByIdAsync(id, userId, isAdmin);
             return StatusCode((int)courseResponse.Code, courseResponse);
+        }
+
+        [HttpPatch("reorder")]
+        [Authorize(Policy = "Admin")]
+        public async Task<IActionResult> Reorder([FromBody] List<Guid> orderedCourseIds)
+        {
+            Response? response = await _courseServices.ReorderAsync(orderedCourseIds);
+            return StatusCode((int)response.Code, response);
         }
 
         [HttpPost("video")]

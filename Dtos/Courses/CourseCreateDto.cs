@@ -60,5 +60,12 @@ namespace EdgePMO.API.Dtos
 
         [Required]
         public Guid InstructorId { get; set; }
+
+        public bool IsPublic { get; set; } = true;
+
+        public bool ShowStudentsCount { get; set; } = true;
+
+        [Range(0, double.MaxValue)]
+        public double? OriginalPrice { get; set; }
     }
 }

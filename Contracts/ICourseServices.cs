@@ -14,9 +14,11 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> EnrollUsersByEmailsAsync(Guid courseId, IEnumerable<string> email);
 
-        Task<Response> GetAllAsync();
+        Task<Response> GetAllAsync(Guid? currentUserId, bool isAdmin);
 
-        Task<Response> GetByIdAsync(Guid id);
+        Task<Response> GetByIdAsync(Guid id, Guid? currentUserId, bool isAdmin);
+
+        Task<Response> ReorderAsync(List<Guid> orderedCourseIds);
 
         Task<Response> GetEnrolledUsersAsync(Guid courseId);
 

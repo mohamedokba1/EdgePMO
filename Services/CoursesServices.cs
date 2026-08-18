@@ -113,7 +113,7 @@ namespace EdgePMO.API.Services
             _context.CourseVideos.Add(video);
             await _context.SaveChangesAsync();
 
-            Response? courseResponse = await GetByIdAsync(dto.CourseId);
+            Response? courseResponse = await GetByIdAsync(dto.CourseId, currentUserId: null, isAdmin: true);
 
             response.IsSuccess = true;
             response.Message = "Uploaded video attached to course.";
@@ -144,6 +144,11 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            // New courses go to the back of the display order (requirement 4.3).
+            int nextSortOrder = await _context.Courses.AnyAsync()
+                ? await _context.Courses.MaxAsync(c => c.SortOrder) + 1
+                : 0;
+
             Course? course = new Course
             {
                 CourseId = Guid.NewGuid(),
@@ -165,7 +170,11 @@ namespace EdgePMO.API.Services
                 InstructorId = dto.InstructorId,
                 Price = dto.Price,
                 IsActive = true,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                SortOrder = nextSortOrder,
+                IsPublic = dto?.IsPublic ?? true,
+                ShowStudentsCount = dto?.ShowStudentsCount ?? true,
+                OriginalPrice = dto?.OriginalPrice > 0 ? dto.OriginalPrice : null,
             };
 
             _context.Courses.Add(course);
@@ -210,7 +219,7 @@ namespace EdgePMO.API.Services
                 }
             }
 
-            Response? courseResponse = await GetByIdAsync(course.CourseId);
+            Response? courseResponse = await GetByIdAsync(course.CourseId, currentUserId: null, isAdmin: true);
             response.IsSuccess = true;
             response.Message = "Course created successfully.";
             response.Code = HttpStatusCode.Created;
@@ -335,7 +344,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetAllAsync()
+        public async Task<Response> GetAllAsync(Guid? currentUserId, bool isAdmin)
         {
             Response response = new Response();
 
@@ -352,7 +361,17 @@ namespace EdgePMO.API.Services
                     .ThenInclude(co => co.Documents)
                 .Include(c => c.CourseUsers)
                     .ThenInclude(cu => cu.User)
+                .OrderBy(c => c.SortOrder)
                 .ToListAsync();
+
+            // Requirement 4.4 — admins see everything; everyone else only sees IsPublic
+            // courses, plus any hidden course they've actually purchased.
+            if (!isAdmin)
+            {
+                courses = courses
+                    .Where(c => c.IsPublic || (currentUserId.HasValue && c.CourseUsers.Any(cu => cu.UserId == currentUserId.Value)))
+                    .ToList();
+            }
 
             response.IsSuccess = true;
             response.Message = "Courses retrieved successfully.";
@@ -361,7 +380,7 @@ namespace EdgePMO.API.Services
             return response;
         }
 
-        public async Task<Response> GetByIdAsync(Guid id)
+        public async Task<Response> GetByIdAsync(Guid id, Guid? currentUserId, bool isAdmin)
         {
             Response response = new Response();
 
@@ -381,6 +400,21 @@ namespace EdgePMO.API.Services
                 .FirstOrDefaultAsync(c => c.CourseId == id);
 
             if (course == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Course not found.";
+                response.Code = HttpStatusCode.NotFound;
+                return response;
+            }
+
+            // Requirement 4.4 — a hidden course is not reachable by direct URL either,
+            // unless the requester purchased it or is an admin. Responds identically to
+            // "not found" so a hidden course's existence isn't leaked to a random visitor.
+            bool hasAccess = isAdmin
+                || course.IsPublic
+                || (currentUserId.HasValue && course.CourseUsers.Any(cu => cu.UserId == currentUserId.Value));
+
+            if (!hasAccess)
             {
                 response.IsSuccess = false;
                 response.Message = "Course not found.";
@@ -611,6 +645,12 @@ namespace EdgePMO.API.Services
             if (dto.WhatStudentsLearn != null) course.WhatStudentsLearn = dto.WhatStudentsLearn;
             if (dto.WhoShouldAttend != null) course.WhoShouldAttend = dto.WhoShouldAttend;
             if (dto.Requirements != null) course.Requirements = dto.Requirements;
+            if (dto.IsPublic.HasValue) course.IsPublic = dto.IsPublic.Value;
+            if (dto.ShowStudentsCount.HasValue) course.ShowStudentsCount = dto.ShowStudentsCount.Value;
+            // OriginalPrice: 0 is the "clear the discount" sentinel — a real original
+            // price of 0 makes no sense, and PATCH DTOs can't otherwise distinguish
+            // "not provided" from "explicitly null" once deserialized.
+            if (dto.OriginalPrice.HasValue) course.OriginalPrice = dto.OriginalPrice.Value > 0 ? dto.OriginalPrice.Value : null;
 
             course.UpdatedAt = DateTime.UtcNow;
 
@@ -790,8 +830,39 @@ namespace EdgePMO.API.Services
             response.IsSuccess = true;
             response.Code = HttpStatusCode.OK;
             response.Message = "Course updated successfully.";
-            response.Result = (await GetByIdAsync(course.CourseId)).Result;
+            response.Result = (await GetByIdAsync(course.CourseId, currentUserId: null, isAdmin: true)).Result;
 
+            return response;
+        }
+
+        /// <summary>Requirement 4.3 — persists the admin's drag-and-drop course order.</summary>
+        public async Task<Response> ReorderAsync(List<Guid> orderedCourseIds)
+        {
+            Response response = new Response();
+
+            List<Course> courses = await _context.Courses
+                .Where(c => orderedCourseIds.Contains(c.CourseId))
+                .ToListAsync();
+
+            if (courses.Count != orderedCourseIds.Count)
+            {
+                response.IsSuccess = false;
+                response.Message = "One or more course IDs were not found.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            for (int i = 0; i < orderedCourseIds.Count; i++)
+            {
+                Course course = courses.First(c => c.CourseId == orderedCourseIds[i]);
+                course.SortOrder = i;
+            }
+
+            await _context.SaveChangesAsync();
+
+            response.IsSuccess = true;
+            response.Message = "Course order updated.";
+            response.Code = HttpStatusCode.OK;
             return response;
         }
 

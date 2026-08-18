@@ -33,5 +33,24 @@
         public bool? IsActive { get; set; }
         public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        // Requirement 4.3 — admin-controlled display order on the public course list.
+        // Lower sorts first. New courses default to the back of the list (see
+        // CoursesServices.CreateAsync, which sets this to max+1 at creation time).
+        public int SortOrder { get; set; } = 0;
+
+        // Requirement 4.4 — per-course visibility. True (default): listed and reachable
+        // by anyone. False: hidden from the public list and blocked by direct URL unless
+        // the requesting user has actually purchased/enrolled in it.
+        public bool IsPublic { get; set; } = true;
+
+        // Requirement 4.5 — admin can hide the registered-student count on the public
+        // course card/details page without affecting the underlying enrollment data.
+        public bool ShowStudentsCount { get; set; } = true;
+
+        // Requirement 4.1 (narrowed scope — see phase decision) — a simple "was/now"
+        // discount shown to all users. Null/unset means no discount; when set, it must
+        // be greater than Price for the discount to display (enforced at the DTO level).
+        public double? OriginalPrice { get; set; }
     }
 }

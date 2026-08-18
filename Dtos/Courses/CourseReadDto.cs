@@ -26,5 +26,9 @@ namespace EdgePMO.API.Dtos
         public List<CourseContentReadDto> Content { get; init; } = new();
         public List<CourseReviewReadDto> Reviews { get; init; } = new();
         public List<CourseStudentDto> StudentsList { get; init; } = new();
+        public int SortOrder { get; init; }
+        public bool IsPublic { get; init; } = true;
+        public bool ShowStudentsCount { get; init; } = true;
+        public double? OriginalPrice { get; init; }
     }
 }

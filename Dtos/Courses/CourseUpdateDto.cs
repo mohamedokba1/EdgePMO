@@ -55,5 +55,12 @@ namespace EdgePMO.API.Dtos
         public List<string>? Requirements { get; set; } = new();
 
         public List<CourseContentUpdateDto>? Content { get; set; }
+
+        public bool? IsPublic { get; set; }
+
+        public bool? ShowStudentsCount { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public double? OriginalPrice { get; set; }
     }
 }
