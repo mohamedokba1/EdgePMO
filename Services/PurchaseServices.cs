@@ -193,16 +193,52 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            bool isRefund = status.Equals("refunded", StringComparison.OrdinalIgnoreCase);
+            bool accessRevoked = false;
+
             purchase.Status = status;
-            if (status.Equals("refunded", StringComparison.OrdinalIgnoreCase))
+            if (isRefund)
+            {
                 purchase.RefundedAt = DateTime.UtcNow;
+
+                // A refund on this platform means the admin gave the money back
+                // because the student didn't want to continue — access should go
+                // with it. Enforced here, not just from the button that triggers
+                // it, so it holds regardless of how the status change was made.
+                if (purchase.CourseId.HasValue)
+                {
+                    CourseUser? enrollment = await _context.CourseUsers
+                        .FirstOrDefaultAsync(cu => cu.CourseId == purchase.CourseId.Value && cu.UserId == purchase.UserId);
+                    if (enrollment != null)
+                    {
+                        _context.CourseUsers.Remove(enrollment);
+                        accessRevoked = true;
+                    }
+                }
+
+                if (purchase.TemplateId.HasValue)
+                {
+                    UserTemplate? grant = await _context.UserTemplates
+                        .FirstOrDefaultAsync(ut => ut.PurchaseId == purchase.Id)
+                        ?? await _context.UserTemplates
+                        .FirstOrDefaultAsync(ut => ut.TemplateId == purchase.TemplateId.Value && ut.UserId == purchase.UserId);
+                    if (grant != null)
+                    {
+                        _context.UserTemplates.Remove(grant);
+                        accessRevoked = true;
+                    }
+                }
+            }
 
             await _context.SaveChangesAsync();
 
             response.IsSuccess = true;
-            response.Message = "Purchase updated.";
+            response.Message = isRefund
+                ? (accessRevoked ? "Purchase refunded and access revoked." : "Purchase refunded. No active access found to revoke.")
+                : "Purchase updated.";
             response.Code = HttpStatusCode.OK;
             response.Result.Add("purchase", JsonSerializer.SerializeToNode(purchase) ?? JsonValue.Create(new { }));
+            response.Result.Add("accessRevoked", JsonValue.Create(accessRevoked));
             return response;
         }
 
