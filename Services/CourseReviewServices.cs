@@ -115,10 +115,21 @@ namespace EdgePMO.API.Services
 
             try
             {
-                List<CourseReview>? listOfCourseReviews = await _context.CourseReviews
+                // Deliberately NOT querying _context.CourseReviews directly — live-reproduced
+                // against staging (twice, including after a redeploy) that
+                // _context.CourseReviews.Include(cr => cr.User) crashes the connection outright
+                // (not a catchable .NET exception — curl sees "Unsupported HTTP/1 subversion in
+                // response", i.e. the response is corrupted below the app layer), regardless of
+                // whether any rows/User rows are actually involved. The identical User join
+                // reached via Courses.Include(Reviews).ThenInclude(User) works fine (confirmed
+                // live), so routing through that navigation instead sidesteps whatever is wrong
+                // with the direct DbSet<CourseReview> query shape.
+                List<Course> courses = await _context.Courses
                                                                 .AsNoTracking()
-                                                                .Include(cr => cr.User)
-                                                                .Include(cr => cr.Course).ToListAsync();
+                                                                .Include(c => c.Reviews)
+                                                                    .ThenInclude(cr => cr.User)
+                                                                .ToListAsync();
+                List<CourseReview> listOfCourseReviews = courses.SelectMany(c => c.Reviews).ToList();
                 response.IsSuccess = true;
                 response.Message = $"All course reviews retrieved successfully!";
                 // Was serializing the raw entity graph (including the full User navigation —
@@ -131,14 +142,6 @@ namespace EdgePMO.API.Services
             }
             catch (Exception ex)
             {
-                // Live-reproduced against staging: this whole class of read (GetAllAsync,
-                // GetByCourseIdAsync, GetByIdAsync) was crashing the response mid-stream —
-                // not a clean 500, an aborted connection ("Unsupported HTTP/1 subversion in
-                // response" from curl) — despite the query/mapping looking correct by
-                // inspection and matching the pattern that works fine when reviews are read
-                // via the Course.Reviews navigation instead of _context.CourseReviews
-                // directly. Wrapping so whatever it actually is becomes a diagnosable 500
-                // with a real stack trace instead of an opaque connection drop.
                 _logger.LogError(ex, "GetAllAsync (course reviews) failed");
                 response.IsSuccess = false;
                 response.Message = "Could not load reviews. Please try again later.";
@@ -154,11 +157,15 @@ namespace EdgePMO.API.Services
 
             try
             {
-                List<CourseReview>? listOfCourseReviews = await _context.CourseReviews
+                // See GetAllAsync for why this goes through Courses instead of querying
+                // _context.CourseReviews directly.
+                Course? course = await _context.Courses
                                                                 .AsNoTracking()
-                                                                .Where(cr => cr.CourseId == courseId)
-                                                                .Include(cr => cr.User)
-                                                                .ToListAsync();
+                                                                .Where(c => c.CourseId == courseId)
+                                                                .Include(c => c.Reviews)
+                                                                    .ThenInclude(cr => cr.User)
+                                                                .FirstOrDefaultAsync();
+                List<CourseReview> listOfCourseReviews = course?.Reviews ?? new List<CourseReview>();
                 response.IsSuccess = true;
                 response.Message = $"All course reviews retrieved successfully!";
                 List<CourseReviewReadDto> reviewDtos = _mapper.Map<List<CourseReviewReadDto>>(listOfCourseReviews);
@@ -181,12 +188,28 @@ namespace EdgePMO.API.Services
 
             try
             {
-                CourseReview? courseReview = await _context.CourseReviews
+                // See GetAllAsync for why this goes through Courses instead of querying
+                // _context.CourseReviews directly. We don't know the CourseId up front here,
+                // so first resolve it with a plain scalar projection (no Include at all, so it
+                // can't hit the crashing join), then reuse the Courses.Include(Reviews)
+                // .ThenInclude(User) path that's confirmed safe.
+                Guid? courseId = await _context.CourseReviews
                                                                 .AsNoTracking()
                                                                 .Where(cr => cr.Id == id)
-                                                                .Include(cr => cr.User)
-                                                                .Include(cr => cr.Course)
+                                                                .Select(cr => (Guid?)cr.CourseId)
                                                                 .FirstOrDefaultAsync();
+
+                CourseReview? courseReview = null;
+                if (courseId.HasValue)
+                {
+                    Course? course = await _context.Courses
+                                                                .AsNoTracking()
+                                                                .Where(c => c.CourseId == courseId.Value)
+                                                                .Include(c => c.Reviews.Where(r => r.Id == id))
+                                                                    .ThenInclude(cr => cr.User)
+                                                                .FirstOrDefaultAsync();
+                    courseReview = course?.Reviews.FirstOrDefault(r => r.Id == id);
+                }
                 response.IsSuccess = true;
                 response.Message = $"Course review retrieved successfully!";
                 CourseReviewReadDto? reviewDto = courseReview != null ? _mapper.Map<CourseReviewReadDto>(courseReview) : null;
