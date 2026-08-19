@@ -724,6 +724,12 @@ namespace EdgePMO.API.Services
             // price of 0 makes no sense, and PATCH DTOs can't otherwise distinguish
             // "not provided" from "explicitly null" once deserialized.
             if (dto.OriginalPrice.HasValue) course.OriginalPrice = dto.OriginalPrice.Value > 0 ? dto.OriginalPrice.Value : null;
+            // Manual escape hatch alongside drag-and-drop reorder — admin can type an
+            // exact position instead of dragging. Doesn't renumber other courses, same
+            // as dragging one card doesn't touch courses outside the moved range; if two
+            // courses end up sharing a value, ties just resolve by whichever the DB
+            // happens to return first, same as any other OrderBy tie.
+            if (dto.SortOrder.HasValue) course.SortOrder = dto.SortOrder.Value;
 
             course.UpdatedAt = DateTime.UtcNow;
 

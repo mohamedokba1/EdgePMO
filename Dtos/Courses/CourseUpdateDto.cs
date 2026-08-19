@@ -62,5 +62,8 @@ namespace EdgePMO.API.Dtos
 
         [Range(0, double.MaxValue)]
         public double? OriginalPrice { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public int? SortOrder { get; set; }
     }
 }
