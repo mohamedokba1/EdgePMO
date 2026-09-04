@@ -1075,6 +1075,37 @@ namespace EdgePMO.API.Services
             return response;
         }
 
+        /// <summary>"Continue Course" resume point — reads back the same VideoWatchProgress
+        /// rows 3.5 writes, picking the most recently-watched video (chronologically last,
+        /// not furthest-along) so the learner returns to where they actually stopped.</summary>
+        public async Task<Response> GetResumePointAsync(Guid userId, Guid courseId)
+        {
+            Response response = new Response();
+
+            VideoWatchProgress? latest = await _context.VideoWatchProgresses
+                .AsNoTracking()
+                .Where(p => p.UserId == userId && p.CourseVideo.CourseOutline.CourseId == courseId)
+                .OrderByDescending(p => p.LastWatchedAt)
+                .FirstOrDefaultAsync();
+
+            response.IsSuccess = true;
+            response.Code = HttpStatusCode.OK;
+
+            if (latest == null)
+            {
+                // No watch history yet — frontend falls back to session 0 / lesson 0.
+                response.Message = "No watch history for this course yet.";
+                response.Result.Add("videoId", null);
+                response.Result.Add("watchedSeconds", 0);
+                return response;
+            }
+
+            response.Message = "Resume point retrieved.";
+            response.Result.Add("videoId", latest.CourseVideoId);
+            response.Result.Add("watchedSeconds", latest.WatchedSeconds);
+            return response;
+        }
+
         private async Task<string?> GetFilePathAsync(Guid mediaId)
         {
             var media = await _context.MediaFiles

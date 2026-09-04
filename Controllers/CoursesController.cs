@@ -227,6 +227,20 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
+        // "Continue Course" resume point — which video this user was watching most
+        // recently in this course, and how far into it they got.
+        [HttpGet("{id:guid}/resume-point")]
+        [Authorize]
+        public async Task<IActionResult> GetResumePoint(Guid id)
+        {
+            string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+
+            Guid userId = Guid.Parse(userIdClaim);
+            Response? response = await _courseServices.GetResumePointAsync(userId, id);
+            return StatusCode((int)response.Code, response);
+        }
+
         // Requirement 5.2 — per-video view counts and watch-time for admins.
         [HttpGet("{id:guid}/video-analytics")]
         [Authorize(Policy = "Admin")]

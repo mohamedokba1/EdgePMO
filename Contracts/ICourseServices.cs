@@ -37,5 +37,9 @@ namespace EdgePMO.API.Contracts
 
         /// <summary>Requirement 5.2 — per-video view counts and watch-time for admins.</summary>
         Task<Response> GetVideoAnalyticsAsync(Guid courseId);
+
+        /// <summary>"Continue Course" resume point — the video this user was watching
+        /// most recently in this course, and how far into it they got.</summary>
+        Task<Response> GetResumePointAsync(Guid userId, Guid courseId);
     }
 }
