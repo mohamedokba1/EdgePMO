@@ -97,10 +97,26 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)response.Code, response);
         }
 
+        // Was accepting any id in the route with no ownership check — any logged-in
+        // user could force-logout any other user (and immediately kill their active
+        // session too, since OnTokenValidated re-checks SessionId on every request).
+        // There's no legitimate "log someone else out" action using this route, so
+        // it can only ever target the caller's own account now.
         [HttpGet("logout/{id}")]
         [Authorize]
         public async Task<IActionResult> Logout(Guid id)
         {
+            string? callerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(callerIdClaim) || !Guid.TryParse(callerIdClaim, out Guid callerId) || callerId != id)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new Response
+                {
+                    IsSuccess = false,
+                    Message = "You can only log yourself out.",
+                    Code = HttpStatusCode.Forbidden,
+                });
+            }
+
             Response response = await _userServices.Logout(id);
 
             Response.Cookies.Delete("accessToken", new CookieOptions
