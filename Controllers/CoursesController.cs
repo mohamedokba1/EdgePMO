@@ -194,7 +194,12 @@ namespace EdgePMO.API.Controllers
             return StatusCode((int)resp.Code, resp);
         }
 
+        // Was fully anonymous — anyone could probe arbitrary emails against
+        // arbitrary course IDs with no login at all and learn who bought what.
+        // Its only real caller (the customer Purchases page) is always logged
+        // in already.
         [HttpPost("{id:guid}/students/status")]
+        [Authorize]
         public async Task<IActionResult> IsEnrolled(Guid id, [FromBody] ListOfUsersEmails dto)
         {
             Response? resp = await _courseServices.IsUsersEnrolledAsync(id, dto.Emails);
