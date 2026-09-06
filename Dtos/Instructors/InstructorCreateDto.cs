@@ -17,5 +17,8 @@ namespace EdgePMO.API.Dtos
 
         [StringLength(500)]
         public string? ProfileImageUrl { get; init; }
+
+        [StringLength(500)]
+        public string? SignatureImageUrl { get; init; }
     }
 }

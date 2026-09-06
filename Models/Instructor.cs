@@ -7,6 +7,11 @@
         public string Title { get; set; }
         public string Profile { get; set; }
         public string ProfileImageUrl { get; set; }
+
+        // Used on the course-completion certificate — signed off by whoever
+        // actually teaches the course, not a fixed/shared signature.
+        public string? SignatureImageUrl { get; set; }
+
         public List<Course> Courses { get; set; } = new();
     }
 }

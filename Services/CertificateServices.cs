@@ -65,12 +65,22 @@ namespace EdgePMO.API.Services
         {
             Certificate? cert = await _context.Certificates
                                               .Include(c => c.Course)
+                                                  .ThenInclude(c => c.Instructor)
                                               .FirstOrDefaultAsync(c => c.CertificateId == certificateId);
 
             if (cert == null) return null;
 
             User? user = await _context.Users.FindAsync(Guid.Parse(cert.CertificateDescription));
             string studentName = $"{user?.FirstName} {user?.LastName}";
+            string issuedOn = cert.IssuedAt.ToString("dd MMMM yyyy");
+
+            Instructor? instructor = cert.Course.Instructor;
+            string instructorName = instructor?.InstructorName ?? "";
+            // No signature on file for this instructor yet — leave the line blank
+            // rather than broken-image-icon a missing src.
+            string signatureImgTag = !string.IsNullOrWhiteSpace(instructor?.SignatureImageUrl)
+                ? $"<img src='{instructor.SignatureImageUrl}' class='signature-img' />"
+                : "";
 
             LaunchOptions? options = new LaunchOptions
             {
@@ -82,29 +92,182 @@ namespace EdgePMO.API.Services
             using IPage? page = await browser.NewPageAsync();
 
             string htmlContent = $@"
-                                    <html>
-                                    <head>
-                                        <style>
-                                            @import url('https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Montserrat:wght@400;700&display=swap');
-                                            body {{ font-family: 'Montserrat', sans-serif; text-align: center; padding: 50px; border: 20px solid #1a237e; }}
-                                            .title {{ font-size: 50px; color: #1a237e; }}
-                                            .name {{ font-family: 'Pinyon Script', cursive; font-size: 80px; color: #c5a059; margin: 20px 0; }}
-                                            .course {{ font-size: 30px; font-weight: bold; }}
-                                            .footer {{ margin-top: 100px; display: flex; justify-content: space-between; padding: 0 50px; }}
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <div class='title'>Certificate of Completion</div>
-                                        <p>This is to certify that</p>
-                                        <div class='name'>{studentName}</div>
-                                        <p>has successfully completed the course</p>
-                                        <div class='course'>{cert.Course.Name}</div>
-                                        <div class='footer'>
-                                            <div>Date: {DateTime.UtcNow:dd/MM/yyyy}</div>
-                                            <div>Verify ID: {cert.CertificateTitle}</div>
-                                        </div>
-                                    </body>
-                                    </html>";
+<html>
+<head>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap');
+
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      padding: 28px;
+      background: #F4F1EA;
+      font-family: 'Poppins', sans-serif;
+    }}
+
+    .frame {{
+      position: relative;
+      height: calc(100vh - 56px);
+      border: 3px solid #1B4F91;
+      padding: 8px;
+    }}
+    .frame::before {{
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border: 1px solid #1B4F91;
+      pointer-events: none;
+    }}
+
+    .content {{
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px 70px;
+    }}
+
+    h1 {{
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 46px;
+      color: #17181A;
+      margin: 0 0 14px;
+    }}
+    .rule {{
+      width: 340px;
+      height: 3px;
+      background: #C9A227;
+      margin: 0 0 22px;
+    }}
+
+    .lede {{
+      font-size: 17px;
+      color: #6B7280;
+      margin: 0 0 6px;
+    }}
+
+    .student-name {{
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 34px;
+      color: #17181A;
+      margin: 6px 0 18px;
+    }}
+
+    .course-name {{
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 22px;
+      color: #17181A;
+      margin: 6px 0 26px;
+    }}
+
+    .blurb {{
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #26282C;
+      max-width: 780px;
+      margin: 0 0 40px;
+    }}
+
+    .footer {{
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }}
+
+    .signature-block {{
+      text-align: left;
+      min-width: 220px;
+    }}
+    .signature-img {{
+      max-height: 46px;
+      max-width: 180px;
+      display: block;
+      margin-bottom: 4px;
+    }}
+    .signature-line {{
+      width: 200px;
+      border-bottom: 1px solid #17181A;
+      margin-bottom: 6px;
+      height: 22px;
+    }}
+    .signature-name {{
+      font-weight: 700;
+      font-size: 15px;
+      color: #17181A;
+    }}
+    .signature-title {{
+      font-size: 12.5px;
+      color: #6B7280;
+    }}
+
+    .issued {{
+      font-size: 14px;
+      color: #17181A;
+    }}
+
+    .logo {{
+      text-align: right;
+    }}
+    .logo .mark {{
+      display: inline-block;
+      width: 38px;
+      height: 4px;
+      background: #26282C;
+      margin-bottom: 4px;
+    }}
+    .logo .word {{
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      color: #FF0400;
+      letter-spacing: 0.5px;
+    }}
+  </style>
+</head>
+<body>
+  <div class='frame'>
+    <div class='content'>
+      <h1>Certificate of Completion</h1>
+      <div class='rule'></div>
+
+      <p class='lede'>Presents This</p>
+      <div class='student-name'>{studentName}</div>
+
+      <p class='lede'>For the Successful Completion of the</p>
+      <div class='course-name'>{cert.Course.Name}</div>
+
+      <p class='blurb'>
+        This certificate is proudly presented in recognition of the successful completion of this
+        professional training program. The recipient has demonstrated dedication, commitment, and
+        practical understanding of the concepts and skills covered throughout the course, supporting
+        continued professional development and excellence in project environments.
+      </p>
+
+      <div class='footer'>
+        <div class='signature-block'>
+          {signatureImgTag}
+          <div class='signature-line'></div>
+          <div class='signature-name'>{instructorName}</div>
+          <div class='signature-title'>Course Instructor</div>
+        </div>
+
+        <div class='issued'>Issued on: {issuedOn}</div>
+
+        <div class='logo'>
+          <span class='mark'></span>
+          <div class='word'>EDGE PMO</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>";
 
             await page.SetContentAsync(htmlContent);
             return await page.PdfDataAsync(new PdfOptions { Landscape = true, PrintBackground = true });
