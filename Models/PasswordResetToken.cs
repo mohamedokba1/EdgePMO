@@ -20,6 +20,10 @@ namespace EdgePMO.API.Models
 
         public bool IsUsed { get; set; } = false;
 
+        // Wrong-code attempts against this specific token — caps brute-forcing
+        // the 6-digit code. Each reset request gets its own row/counter.
+        public int Attempts { get; set; } = 0;
+
         [ForeignKey("UserId")]
         public virtual User User { get; set; }
     }

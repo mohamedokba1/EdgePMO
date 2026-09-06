@@ -25,23 +25,8 @@ namespace EdgePMO.API.Controllers
         [HttpPost("password-reset")]
         public async Task<IActionResult> PasswordReset(PasswordResetDto dto)
         {
-            Response response = new Response();
-            bool result = await _userService.ResetPasswordAsync(dto);
-
-            if (!result)
-            {
-                response.IsSuccess = false;
-                response.Message = "Invalid token or expired.";
-                response.Code = System.Net.HttpStatusCode.BadRequest;
-                return StatusCode((int)response.Code, response);
-            }
-            else
-            {
-                response.IsSuccess = true;
-                response.Message = "Password reset successfully.";
-                response.Code = System.Net.HttpStatusCode.OK;
-                return StatusCode((int)response.Code, response);
-            }
+            Response response = await _userService.ResetPasswordAsync(dto);
+            return StatusCode((int)response.Code, response);
         }
     }
 }

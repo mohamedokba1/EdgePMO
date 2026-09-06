@@ -24,7 +24,7 @@ namespace EdgePMO.API.Contracts
 
         Task<Response> Register(RegisterUserDto dto, bool isAdmin = false);
 
-        Task<bool> ResetPasswordAsync(PasswordResetDto dto);
+        Task<Response> ResetPasswordAsync(PasswordResetDto dto);
 
         Task<Response> SendPasswordResetTokenAsync(string email);
 

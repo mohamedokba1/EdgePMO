@@ -129,14 +129,6 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
-            if (user.EmailVerificationToken != dto.Code)
-            {
-                response.IsSuccess = false;
-                response.Message = "Invalid verification code.";
-                response.Code = HttpStatusCode.BadRequest;
-                return response;
-            }
-
             if (user.EmailVerificationExpiresAt < DateTime.UtcNow)
             {
                 response.IsSuccess = false;
@@ -145,9 +137,34 @@ namespace EdgePMO.API.Services
                 return response;
             }
 
+            const int maxAttempts = 5;
+            if (user.EmailVerificationAttempts >= maxAttempts)
+            {
+                response.IsSuccess = false;
+                response.Message = "Too many attempts. Please request a new code.";
+                response.Code = HttpStatusCode.BadRequest;
+                return response;
+            }
+
+            if (user.EmailVerificationToken != dto.Code)
+            {
+                user.EmailVerificationAttempts++;
+                await _context.SaveChangesAsync();
+
+                int attemptsRemaining = Math.Max(0, maxAttempts - user.EmailVerificationAttempts);
+                response.IsSuccess = false;
+                response.Message = attemptsRemaining > 0
+                    ? $"Invalid verification code. {attemptsRemaining} attempt(s) remaining."
+                    : "Too many attempts. Please request a new code.";
+                response.Code = HttpStatusCode.BadRequest;
+                response.Result.Add("attemptsRemaining", attemptsRemaining);
+                return response;
+            }
+
             user.EmailVerified = true;
             user.EmailVerificationToken = null;
             user.EmailVerificationExpiresAt = null;
+            user.EmailVerificationAttempts = 0;
 
             await _context.SaveChangesAsync();
 
@@ -526,18 +543,47 @@ namespace EdgePMO.API.Services
             }
         }
 
-        public async Task<bool> ResetPasswordAsync(PasswordResetDto dto)
+        public async Task<Response> ResetPasswordAsync(PasswordResetDto dto)
         {
+            Response response = new Response { Code = HttpStatusCode.BadRequest };
+
             User? user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
-            if (user == null) return false;
+            if (user == null)
+            {
+                response.Message = "Invalid token or expired.";
+                return response;
+            }
 
             PasswordResetToken? tokenEntry = await _context.PasswordResetTokens
                 .Where(t => t.UserId == user.Id && !t.IsUsed && t.Expiration > DateTime.UtcNow)
                 .OrderByDescending(t => t.Expiration)
                 .FirstOrDefaultAsync();
 
-            if (tokenEntry == null || tokenEntry.Token != dto.VerificationCode)
-                return false;
+            if (tokenEntry == null)
+            {
+                response.Message = "Invalid token or expired.";
+                return response;
+            }
+
+            const int maxAttempts = 5;
+            if (tokenEntry.Attempts >= maxAttempts)
+            {
+                response.Message = "Too many attempts. Please request a new code.";
+                return response;
+            }
+
+            if (tokenEntry.Token != dto.VerificationCode)
+            {
+                tokenEntry.Attempts++;
+                await _context.SaveChangesAsync();
+
+                int attemptsRemaining = Math.Max(0, maxAttempts - tokenEntry.Attempts);
+                response.Message = attemptsRemaining > 0
+                    ? $"Invalid verification code. {attemptsRemaining} attempt(s) remaining."
+                    : "Too many attempts. Please request a new code.";
+                response.Result.Add("attemptsRemaining", attemptsRemaining);
+                return response;
+            }
 
             byte[]? salt = PasswordHasher.GenerateSalt();
             string? hashedPassword = PasswordHasher.Hash(dto.NewPassword, salt);
@@ -547,7 +593,11 @@ namespace EdgePMO.API.Services
             tokenEntry.IsUsed = true;
 
             await _context.SaveChangesAsync();
-            return true;
+
+            response.IsSuccess = true;
+            response.Message = "Password reset successfully.";
+            response.Code = HttpStatusCode.OK;
+            return response;
         }
 
         public async Task<Response> SendPasswordResetTokenAsync(string email)
@@ -598,6 +648,7 @@ namespace EdgePMO.API.Services
 
             user.EmailVerificationToken = token;
             user.EmailVerificationExpiresAt = _verificationService.GetExpiry();
+            user.EmailVerificationAttempts = 0;
             user.UpdatedAt = DateTime.Now.ToLocalTime();
             await _context.SaveChangesAsync();
 

@@ -26,6 +26,10 @@ public partial class User
 
     public DateTime? EmailVerificationExpiresAt { get; set; }
 
+    // Wrong-code attempts against the current EmailVerificationToken — caps
+    // brute-forcing the 6-digit code. Reset to 0 whenever a fresh code is sent.
+    public int EmailVerificationAttempts { get; set; } = 0;
+
     public string? LastCompnay { get; set; }
 
     public bool? IsActive { get; set; }
