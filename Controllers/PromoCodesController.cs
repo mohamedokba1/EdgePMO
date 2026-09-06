@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EdgePMO.API.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "Admin")]
     [Route("api/v2.0/[controller]")]
     public class PromoCodesController : ControllerBase
     {

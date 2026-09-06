@@ -49,7 +49,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Create([FromBody] TestimonialCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -72,7 +72,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Update(Guid id, [FromBody] TestimonialUpdateDto dto)
         {
             if (id != dto.TestimonialId)
@@ -99,7 +99,7 @@ namespace EdgePMO.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = "Admin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             bool deleted = await _testimonialServices.DeleteAsync(id);
