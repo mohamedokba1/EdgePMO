@@ -28,7 +28,7 @@ namespace EdgePMO.API.Services
         {
             Response response = new Response();
             Course? course = await _context.Courses.FindAsync(dto.CourseId);
-            if(course is null)
+            if (course is null)
             {
                 response.IsSuccess = false;
                 response.Message = "Course not found";
@@ -47,9 +47,9 @@ namespace EdgePMO.API.Services
             };
 
             await _context.Set<CourseReview>().AddAsync(newCourseReview);
-            int rowsAffected =  await _context.SaveChangesAsync();
+            int rowsAffected = await _context.SaveChangesAsync();
 
-            if(rowsAffected > 0)
+            if (rowsAffected > 0)
             {
                 response.IsSuccess = true;
                 response.Message = "New course review created successfully!";
@@ -79,7 +79,7 @@ namespace EdgePMO.API.Services
             }
             else
             {
-                response.IsSuccess= false;
+                response.IsSuccess = false;
                 response.Message = $"Course review with id = {id} not found";
                 response.Code = HttpStatusCode.BadRequest;
             }
@@ -157,17 +157,16 @@ namespace EdgePMO.API.Services
 
             try
             {
-                // See GetAllAsync for why this goes through Courses instead of querying
-                // _context.CourseReviews directly.
                 Course? course = await _context.Courses
-                                                                .AsNoTracking()
-                                                                .Where(c => c.CourseId == courseId)
-                                                                .Include(c => c.Reviews)
-                                                                    .ThenInclude(cr => cr.User)
-                                                                .FirstOrDefaultAsync();
+                                                .AsNoTracking()
+                                                .Where(c => c.CourseId == courseId)
+                                                .Include(c => c.Reviews)
+                                                    .ThenInclude(cr => cr.User)
+                                                .FirstOrDefaultAsync();
                 List<CourseReview> listOfCourseReviews = course?.Reviews ?? new List<CourseReview>();
                 response.IsSuccess = true;
                 response.Message = $"All course reviews retrieved successfully!";
+                response.Code = HttpStatusCode.OK;
                 List<CourseReviewReadDto> reviewDtos = _mapper.Map<List<CourseReviewReadDto>>(listOfCourseReviews);
                 response.Result.Add("reviews", JsonSerializer.SerializeToNode(reviewDtos) ?? JsonValue.Create(Array.Empty<object>()));
             }
@@ -236,9 +235,9 @@ namespace EdgePMO.API.Services
 
             if (courseReview != null)
             {
-                if(!string.IsNullOrEmpty(dto.Header) && !string.IsNullOrWhiteSpace(dto.Header))
+                if (!string.IsNullOrEmpty(dto.Header) && !string.IsNullOrWhiteSpace(dto.Header))
                 {
-                    courseReview.Header = dto.Header;               
+                    courseReview.Header = dto.Header;
                 }
 
                 if (dto.Rating.HasValue)
@@ -256,7 +255,6 @@ namespace EdgePMO.API.Services
                 response.IsSuccess = true;
                 response.Message = $"Course review with id = {dto.Id} updated successfully";
                 response.Code = HttpStatusCode.OK;
-                
             }
             else
             {
