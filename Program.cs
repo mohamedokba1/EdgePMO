@@ -94,6 +94,7 @@ public class Program
         builder.Services.AddScoped<IConsultationRequestServices, ConsultationRequestServices>();
         builder.Services.AddHttpClient<IPaymentServices, PaymentServices>();
         builder.Services.AddScoped<IPromoCodeServices, PromoCodeServices>();
+        builder.Services.AddScoped<ICertificateServices, CertificateServices>();
 
         builder.Services.AddAutoMapper(cfg =>
         {
