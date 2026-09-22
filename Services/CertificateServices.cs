@@ -71,7 +71,7 @@ namespace EdgePMO.API.Services
             {
                 response.IsSuccess = true;
                 response.Result.Add("certificateId", existingCert.CertificateId);
-                response.Code = HttpStatusCode.Conflict;
+                response.Code = HttpStatusCode.OK;
                 return response;
             }
 
