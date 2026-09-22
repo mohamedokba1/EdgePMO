@@ -127,6 +127,7 @@ namespace EdgePMO.API.Services
             string htmlContent = $@"
 <html>
 <head>
+  <base href='https://edgepmo.com/' />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap');
 
@@ -303,6 +304,24 @@ namespace EdgePMO.API.Services
 </html>";
 
             await page.SetContentAsync(htmlContent);
+
+            if (!string.IsNullOrWhiteSpace(signatureImgTag))
+            {
+                try
+                {
+                    await page.WaitForFunctionAsync(
+                        @"() => {
+                            const img = document.querySelector('.signature-img');
+                            return !img || (img.complete && img.naturalWidth > 0);
+                        }",
+                        new WaitForFunctionOptions { Timeout = 8000 });
+                }
+                catch (WaitTaskTimeoutException)
+                {
+                    // Signature image failed to load in time — proceed without blocking the download.
+                }
+            }
+
             return await page.PdfDataAsync(new PdfOptions { Landscape = true, PrintBackground = true });
         }
     }
