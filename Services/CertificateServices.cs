@@ -49,7 +49,8 @@ namespace EdgePMO.API.Services
                 CertificateId = Guid.NewGuid(),
                 CourseId = courseId,
                 CertificateTitle = $"CERT-{DateTime.UtcNow.Year}-{Guid.NewGuid().ToString().Substring(0, 5).ToUpper()}",
-                CertificateDescription = userId.ToString()
+                CertificateDescription = userId.ToString(),
+                SerialNumber = $"SN-{DateTime.UtcNow.Year}-{Guid.NewGuid().ToString("N").Substring(0, 10).ToUpper()}"
             };
 
             _context.Certificates.Add(newCert);
