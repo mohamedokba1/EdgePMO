@@ -3,6 +3,7 @@ using EdgePMO.API.Dtos;
 using EdgePMO.API.Models;
 using Microsoft.EntityFrameworkCore;
 using PuppeteerSharp;
+using PuppeteerSharp.BrowserData;
 using System.Net;
 
 namespace EdgePMO.API.Services
@@ -10,10 +11,40 @@ namespace EdgePMO.API.Services
     public class CertificateServices : ICertificateServices
     {
         private readonly EdgepmoDbContext _context;
+        private static readonly SemaphoreSlim _browserFetchLock = new(1, 1);
+        private static string? _cachedExecutablePath;
 
         public CertificateServices(EdgepmoDbContext context)
         {
             _context = context;
+        }
+
+        private static async Task<string> EnsureBrowserAsync()
+        {
+            if (_cachedExecutablePath != null && File.Exists(_cachedExecutablePath))
+            {
+                return _cachedExecutablePath;
+            }
+
+            await _browserFetchLock.WaitAsync();
+            try
+            {
+                if (_cachedExecutablePath != null && File.Exists(_cachedExecutablePath))
+                {
+                    return _cachedExecutablePath;
+                }
+
+                BrowserFetcher fetcher = new();
+                InstalledBrowser installed = fetcher.GetInstalledBrowsers().FirstOrDefault(b => File.Exists(b.GetExecutablePath()))
+                    ?? await fetcher.DownloadAsync();
+
+                _cachedExecutablePath = installed.GetExecutablePath();
+                return _cachedExecutablePath;
+            }
+            finally
+            {
+                _browserFetchLock.Release();
+            }
         }
 
         public async Task<Response> ProcessCertificateClaimAsync(Guid userId, Guid courseId)
@@ -86,6 +117,7 @@ namespace EdgePMO.API.Services
             LaunchOptions? options = new LaunchOptions
             {
                 Headless = true,
+                ExecutablePath = await EnsureBrowserAsync(),
                 Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
             };
 
