@@ -233,12 +233,17 @@ namespace EdgePMO.API.Services
       min-width: 220px;
     }}
     .signature-img {{
-      max-height: 46px;
-      max-width: 180px;
+      /* Fill the width of the signature line, sitting on it. */
+      width: 200px;
+      max-height: 84px;
+      object-fit: contain;
+      object-position: left bottom;
       display: block;
-      margin-bottom: 4px;
-      /* The signature is a JPEG with a white background; multiply lets the certificate
-         paper show through the white so only the ink remains. */
+      margin-bottom: -16px;
+      /* Signatures are usually JPEGs with an off-white background (often ~247 grey, not
+         255). Lift it to pure white first, then multiply so the certificate paper shows
+         through and only the ink remains. */
+      filter: brightness(1.06) contrast(1.15);
       mix-blend-mode: multiply;
     }}
     .signature-line {{
