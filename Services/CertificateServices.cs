@@ -108,11 +108,25 @@ namespace EdgePMO.API.Services
 
             Instructor? instructor = cert.Course.Instructor;
             string instructorName = instructor?.InstructorName ?? "";
-            // No signature on file for this instructor yet — leave the line blank
-            // rather than broken-image-icon a missing src.
-            string signatureImgTag = !string.IsNullOrWhiteSpace(instructor?.SignatureImageUrl)
-                ? $"<img src='{instructor.SignatureImageUrl}' class='signature-img' />"
-                : "";
+            // The stored value is a server file path (/var/www/uploads/Instructor/...). The page
+            // below is built from an HTML string with no web address, so a path in <img src>
+            // can't be loaded and renders as a broken image. Embed the file's bytes instead.
+            // No signature on file (or the file is gone) — leave the line blank rather than
+            // broken-image-icon it.
+            string signatureImgTag = "";
+            string? signaturePath = instructor?.SignatureImageUrl?.Trim();
+            if (!string.IsNullOrWhiteSpace(signaturePath) && File.Exists(signaturePath))
+            {
+                string mime = Path.GetExtension(signaturePath).ToLowerInvariant() switch
+                {
+                    ".png" => "image/png",
+                    ".webp" => "image/webp",
+                    ".gif" => "image/gif",
+                    _ => "image/jpeg"
+                };
+                string signatureBase64 = Convert.ToBase64String(await File.ReadAllBytesAsync(signaturePath));
+                signatureImgTag = $"<img src='data:{mime};base64,{signatureBase64}' class='signature-img' />";
+            }
 
             LaunchOptions? options = new LaunchOptions
             {
