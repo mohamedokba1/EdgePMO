@@ -237,6 +237,9 @@ namespace EdgePMO.API.Services
       max-width: 180px;
       display: block;
       margin-bottom: 4px;
+      /* The signature is a JPEG with a white background; multiply lets the certificate
+         paper show through the white so only the ink remains. */
+      mix-blend-mode: multiply;
     }}
     .signature-line {{
       width: 200px;
