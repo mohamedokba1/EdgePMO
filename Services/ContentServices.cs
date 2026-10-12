@@ -939,10 +939,28 @@ namespace EdgePMO.API.Services
             foreach (string file in Directory.GetFiles(currentPath))
             {
                 string fileName = Path.GetFileName(file);
-                bool existing = await _context.MediaFiles
-                    .AnyAsync(f => f.FileName == fileName && f.FolderId == parentId);
+                MediaFile? existing = await _context.MediaFiles
+                    .FirstOrDefaultAsync(f => f.FileName == fileName && f.FolderId == parentId);
 
-                if (!existing)
+                if (existing == null)
+                {
+                    // A record left with a corrupted path by an earlier folder rename isn't under the
+                    // uploads root any more, so it can't match by folder. Adopt it when the name is unambiguous.
+                    List<MediaFile> orphans = await _context.MediaFiles
+                        .Where(f => f.FileName == fileName && !f.FilePath.StartsWith(rootPath))
+                        .ToListAsync();
+                    if (orphans.Count == 1 && !File.Exists(orphans[0].FilePath))
+                    {
+                        existing = orphans[0];
+                        existing.FolderId = parentId;
+                    }
+                }
+
+                // Disk is the source of truth: re-point a record whose stored path no longer exists.
+                if (existing != null && existing.FilePath != file && !File.Exists(existing.FilePath))
+                    existing.FilePath = file;
+
+                if (existing == null)
                 {
                     FileInfo? info = new FileInfo(file);
                     _context.MediaFiles.Add(new MediaFile
@@ -1307,9 +1325,6 @@ namespace EdgePMO.API.Services
             foreach (MediaFile f in childFiles)
             {
                 f.FilePath = newPhysicalPrefix + f.FilePath[oldPhysicalPrefix.Length..];
-
-                if (!string.IsNullOrEmpty(f.FilePath))
-                    f.FilePath = newPrefix + f.FilePath[oldPrefix.Length..];
             }
         }
     }
