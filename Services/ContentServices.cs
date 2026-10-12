@@ -1137,6 +1137,7 @@ namespace EdgePMO.API.Services
                             Code = HttpStatusCode.BadRequest
                         };
 
+                    string oldFilePath = file.FilePath;
                     string extension = Path.GetExtension(file.FilePath);
                     string directory = Path.GetDirectoryName(file.FilePath)!;
                     string newFilePath = Path.Combine(directory, newName + extension);
@@ -1160,6 +1161,8 @@ namespace EdgePMO.API.Services
                         string fileDir = Path.GetDirectoryName(file.FilePath.Replace("/", Path.DirectorySeparatorChar.ToString())) ?? "";
                         file.FilePath = string.IsNullOrEmpty(fileDir) ? file.FileName : $"{fileDir.Replace(Path.DirectorySeparatorChar, '/')}/{file.FileName}";
                     }
+
+                    await RepointCourseRowsAsync(oldFilePath, file.FilePath);
                 }
 
                 await _context.SaveChangesAsync();
@@ -1272,10 +1275,14 @@ namespace EdgePMO.API.Services
                             Code = HttpStatusCode.Conflict
                         };
 
+                    string oldFilePath = file.FilePath;
+
                     File.Move(file.FilePath, newFilePath);
 
                     file.FilePath = newFilePath;
                     file.FolderId = newParentFolderId;
+
+                    await RepointCourseRowsAsync(oldFilePath, newFilePath);
                 }
 
                 await _context.SaveChangesAsync();
@@ -1326,6 +1333,51 @@ namespace EdgePMO.API.Services
             {
                 f.FilePath = newPhysicalPrefix + f.FilePath[oldPhysicalPrefix.Length..];
             }
+
+            await RepointCourseRowsAsync(oldPhysicalPrefix, newPhysicalPrefix, isFolderPrefix: true);
+        }
+
+        /// <summary>
+        /// Course videos/documents keep the file's path as a plain string, not a reference to the media
+        /// record, so renaming or moving a file (or its folder) would leave them pointing at a path that
+        /// no longer exists. Re-point them in the same transaction as the move. For a folder, pass its
+        /// old and new path with <paramref name="isFolderPrefix"/> and every row under it follows.
+        /// </summary>
+        private async Task RepointCourseRowsAsync(string oldPath, string newPath, bool isFolderPrefix = false)
+        {
+            if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath))
+                return;
+
+            string oldKey = oldPath.Replace("\\", "/");
+            string newKey = newPath.Replace("\\", "/");
+
+            if (isFolderPrefix)
+            {
+                if (!oldKey.EndsWith('/')) oldKey += "/";
+                if (!newKey.EndsWith('/')) newKey += "/";
+            }
+
+            if (oldKey == newKey)
+                return;
+
+            List<CourseVideo> videos = isFolderPrefix
+                ? await _context.CourseVideos.Where(v => v.Url.StartsWith(oldKey)).ToListAsync()
+                : await _context.CourseVideos.Where(v => v.Url == oldKey).ToListAsync();
+
+            List<CourseDocument> documents = isFolderPrefix
+                ? await _context.CourseDocuments.Where(d => d.DocumentUrl.StartsWith(oldKey)).ToListAsync()
+                : await _context.CourseDocuments.Where(d => d.DocumentUrl == oldKey).ToListAsync();
+
+            foreach (CourseVideo v in videos)
+                v.Url = isFolderPrefix ? newKey + v.Url[oldKey.Length..] : newKey;
+
+            foreach (CourseDocument d in documents)
+                d.DocumentUrl = isFolderPrefix ? newKey + d.DocumentUrl[oldKey.Length..] : newKey;
+
+            if (videos.Count + documents.Count > 0)
+                _logger.LogInformation(
+                    "Re-pointed {Videos} course video(s) and {Documents} course document(s) from {Old} to {New}",
+                    videos.Count, documents.Count, oldKey, newKey);
         }
     }
 }
