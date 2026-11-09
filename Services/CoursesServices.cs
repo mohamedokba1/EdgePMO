@@ -701,6 +701,21 @@ namespace EdgePMO.API.Services
             if (!string.IsNullOrWhiteSpace(dto.Description)) course.Description = dto.Description;
             if (dto.Price.HasValue) course.Price = dto.Price.Value;
             if (dto.IsActive.HasValue) course.IsActive = dto.IsActive.Value;
+            // The course image is sent as a media-file id and stored as its path (same as on create).
+            // Without this, picking a new image in the editor saved everything except the image.
+            if (dto.CoursePictureId.HasValue)
+            {
+                MediaFile? picture = await _context.MediaFiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Id == dto.CoursePictureId.Value);
+
+                if (picture is null)
+                {
+                    return new Response { IsSuccess = false, Code = HttpStatusCode.BadRequest, Message = "Course picture not found." };
+                }
+
+                course.CoursePictureUrl = picture.FilePath?.Replace("\\", "/")?.Trim();
+            }
             // Duration (requirement 4.2) is derived below from the actual session
             // videos whenever Content is part of this update — dto.Duration is no
             // longer taken at face value so it can't drift from the real content.

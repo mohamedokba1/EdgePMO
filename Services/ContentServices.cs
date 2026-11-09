@@ -110,6 +110,9 @@ namespace EdgePMO.API.Services
                 }
         };
 
+        // Suffix of an upload still in progress (see UploadMediaStreamWithFolderIdAsync).
+        private const string PartialUploadSuffix = ".part";
+
         private readonly EdgepmoDbContext _context;
         private readonly ContentSettings _settings;
         private readonly ILogger<ContentServices> _logger;
@@ -731,10 +734,20 @@ namespace EdgePMO.API.Services
                                                     .AsNoTracking()
                                                     .FirstOrDefaultAsync(mf => mf.FileName == fileName && mf.FolderId == targetFolderId);
 
-            if (existingFile != null || File.Exists(fullPath))
+            if (existingFile != null)
             {
                 response.IsSuccess = false;
                 response.Message = "File already exists in this location.";
+                response.Code = HttpStatusCode.Conflict;
+                return response;
+            }
+
+            if (File.Exists(fullPath))
+            {
+                // On disk but not in the library: left over from an interrupted upload or copied in by hand.
+                response.IsSuccess = false;
+                response.Message = "A file with this name is already on the server but is not registered in the library. " +
+                                   "Click 'Sync Database', delete it, then upload again.";
                 response.Code = HttpStatusCode.Conflict;
                 return response;
             }
@@ -743,10 +756,21 @@ namespace EdgePMO.API.Services
             {
                 Directory.CreateDirectory(finalDirectory);
             }
+
+            // The upload is written under a temporary name and only given its real name once the whole
+            // body has arrived. A dropped connection, a timeout or a service restart mid-upload therefore
+            // can't leave a truncated file under the real name (which the library could neither delete,
+            // because it has no record, nor replace, because the name was taken).
+            string tempPath = fullPath + PartialUploadSuffix;
+            bool movedIntoPlace = false;
+
             try
             {
+                if (File.Exists(tempPath)) File.Delete(tempPath); // leftover from an earlier attempt of this same file
+
+                long size;
                 await using (FileStream? fileStream = new FileStream(
-                    fullPath,
+                    tempPath,
                     FileMode.Create,
                     FileAccess.Write,
                     FileShare.None,
@@ -754,32 +778,37 @@ namespace EdgePMO.API.Services
                     useAsync: true))
                 {
                     await request.Body.CopyToAsync(fileStream);
-
-                    MediaFile? mediaFile = new MediaFile
-                    {
-                        Id = Guid.NewGuid(),
-                        FileName = fileName,
-                        FilePath = fullPath,
-                        Extension = Path.GetExtension(fileName).ToLowerInvariant(),
-                        FileSize = fileStream.Length,
-                        UploadedAt = DateTime.UtcNow,
-                        FolderId = targetFolderId
-                    };
-
-                    _context.MediaFiles.Add(mediaFile);
-                    await _context.SaveChangesAsync();
-
-                    response.IsSuccess = true;
-                    response.Message = "File streamed and saved successfully.";
-                    response.Code = HttpStatusCode.Created;
-                    response.Result.Add("fileId", JsonValue.Create(mediaFile.Id));
-                    response.Result.Add("path", JsonValue.Create(targetSubPath));
+                    size = fileStream.Length;
                 }
+
+                File.Move(tempPath, fullPath);
+                movedIntoPlace = true;
+
+                MediaFile? mediaFile = new MediaFile
+                {
+                    Id = Guid.NewGuid(),
+                    FileName = fileName,
+                    FilePath = fullPath,
+                    Extension = Path.GetExtension(fileName).ToLowerInvariant(),
+                    FileSize = size,
+                    UploadedAt = DateTime.UtcNow,
+                    FolderId = targetFolderId
+                };
+
+                _context.MediaFiles.Add(mediaFile);
+                await _context.SaveChangesAsync();
+
+                response.IsSuccess = true;
+                response.Message = "File streamed and saved successfully.";
+                response.Code = HttpStatusCode.Created;
+                response.Result.Add("fileId", JsonValue.Create(mediaFile.Id));
+                response.Result.Add("path", JsonValue.Create(targetSubPath));
             }
             catch (Exception ex)
             {
-                // Cleanup physical file if DB save or streaming fails
-                if (File.Exists(fullPath)) File.Delete(fullPath);
+                // Cleanup physical files if streaming or the DB save fails
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+                if (movedIntoPlace && File.Exists(fullPath)) File.Delete(fullPath);
 
                 _logger.LogError(ex, "UploadMediaStreamWithFolderIdAsync failed for fileName={FileName}, targetFolderId={TargetFolderId}", fileName, targetFolderId);
 
@@ -873,6 +902,9 @@ namespace EdgePMO.API.Services
 
             foreach (string filePath in Directory.EnumerateFiles(currentPath))
             {
+                if (filePath.EndsWith(PartialUploadSuffix, StringComparison.OrdinalIgnoreCase))
+                    continue; // upload in progress or abandoned: not a real library file
+
                 FileInfo fileInfo = new(filePath);
                 string fileKey = filePath.ToLower();
 
@@ -939,6 +971,16 @@ namespace EdgePMO.API.Services
             foreach (string file in Directory.GetFiles(currentPath))
             {
                 string fileName = Path.GetFileName(file);
+
+                // An upload in progress is never registered. One that has sat untouched for hours was
+                // abandoned (client gone, service restarted), so clear it away.
+                if (fileName.EndsWith(PartialUploadSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (DateTime.UtcNow - File.GetLastWriteTimeUtc(file) > TimeSpan.FromHours(2))
+                        File.Delete(file);
+                    continue;
+                }
+
                 MediaFile? existing = await _context.MediaFiles
                     .FirstOrDefaultAsync(f => f.FileName == fileName && f.FolderId == parentId);
 
